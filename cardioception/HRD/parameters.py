@@ -11,24 +11,47 @@ from systole import serialSim
 from systole.recording import Oximeter
 
 from cardioception.HRD.languages import danish, danish_children, english, french
+from cardioception.devices.BioHarness.lslCreator import BioHarnessLslCreator, BioHarnessTask
+from cardioception.devices.OximeterWrapper.OximeterTask import OximeterTask
 
+
+def init_oxi_device(setup, serial_port, systole_kw):
+    parameters = {}
+    if setup == "behavioral":
+        parameters["oxiTask"] = OximeterTask(
+            serial_port=serial_port, **systole_kw
+        )
+    elif setup == "test":
+        # Use pre-recorded pulse time series for testing
+        parameters["oxiTask"] = OximeterTask(
+            serial_port=-1, **systole_kw
+        )
+    parameters["oxiTask"].setup().read(duration=1)
+    return parameters
+
+def init_zephyr_device():
+    parameters = {}
+    parameters["zephyrTask"] = BioHarnessTask('',1,100)
+    return parameters
 
 def getParameters(
-    participant: str = "SubjectTest",
-    session: str = "001",
-    serialPort: str = "COM3",
-    setup: str = "behavioral",
-    stairType: str = "psi",
-    exteroception: bool = True,
-    catchTrials: float = 0.0,
-    nTrials: int = 120,
-    device: str = "mouse",
-    screenNb: int = 0,
-    fullscr: bool = True,
-    nBreaking: int = 20,
-    resultPath: Optional[str] = None,
-    language: str = "english",
-    systole_kw: dict = {},
+        participant: str = "SubjectTest",
+        session: str = "001",
+        serialPort: str = "COM3",
+        setup: str = "behavioral",
+        data_stream_device: str = 'oxi',
+        stairType: str = "psi",
+        exteroception: bool = True,
+        catchTrials: float = 0.0,
+        nTrials: int = 120,
+        samples_per_second: int = 1000,
+        device: str = "mouse",
+        screenNb: int = 0,
+        fullscr: bool = True,
+        nBreaking: int = 20,
+        resultPath: Optional[str] = None,
+        language: str = "english",
+        systole_kw: dict = {},
 ):
     """Create Heart Rate Discrimination task parameters.
 
@@ -219,6 +242,8 @@ def getParameters(
     parameters["startKey"] = "space"
     parameters["allowedKeys"] = ["up", "down"]
     parameters["nTrials"] = nTrials
+    parameters["samples_per_second"] = samples_per_second
+    parameters["data_stream_device"] = data_stream_device.lower()
     parameters["nBreaking"] = nBreaking
     parameters["lambdaIntero"] = []  # Save the history of lambda values
     parameters["lambdaExtero"] = []  # Save the history of lambda values
@@ -233,7 +258,7 @@ def getParameters(
     if resultPath is None:
         parameters["resultPath"] = parameters["path"] + "/data/" + participant + session
     else:
-        parameters["resultPath"] = None
+        parameters["resultPath"] = resultPath
     # Create Results directory if not already exists
     if not os.path.exists(parameters["resultPath"]):
         os.makedirs(parameters["resultPath"])
@@ -376,20 +401,11 @@ def getParameters(
             )
 
     parameters["setup"] = setup
-    if setup == "behavioral":
-        # PPG recording
-        port = serial.Serial(serialPort)
-        parameters["oxiTask"] = Oximeter(
-            serial=port, sfreq=75, add_channels=1, **systole_kw
-        )
-        parameters["oxiTask"].setup().read(duration=1)
-    elif setup == "test":
-        # Use pre-recorded pulse time series for testing
-        port = serialSim()
-        parameters["oxiTask"] = Oximeter(
-            serial=port, sfreq=75, add_channels=1, **systole_kw
-        )
-        parameters["oxiTask"].setup().read(duration=1)
+    if parameters["data_stream_device"] == 'oxi':
+        parameters.update(init_oxi_device(setup,serialPort
+                                      , systole_kw))
+    elif parameters["data_stream_device"] == 'zephyr':
+        parameters.update(init_zephyr_device())
 
     ##############
     # Load texts #

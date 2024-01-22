@@ -7,13 +7,12 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 import pkg_resources  # type: ignore
-from systole.detection import ppg_peaks
 
 
 def run(
-    parameters: dict,
-    confidenceRating: bool = True,
-    runTutorial: bool = False,
+        parameters: dict,
+        confidenceRating: bool = True,
+        runTutorial: bool = False,
 ):
     """Run the Heart Rate Discrimination task.
 
@@ -28,18 +27,19 @@ def run(
         and 5 trials with confidence rating.
     """
     from psychopy import core, visual
+    task = parameters[parameters["data_stream_device"] + "Task"]
 
     # Initialization of the Pulse Oximeter
-    parameters["oxiTask"].setup().read(duration=1)
+    task.setup().read(duration=1)
 
     # Show tutorial and training trials
     if runTutorial is True:
         tutorial(parameters)
 
     for nTrial, modality, trialType in zip(
-        range(parameters["nTrials"]),
-        parameters["Modality"],
-        parameters["staircaseType"],
+            range(parameters["nTrials"]),
+            parameters["Modality"],
+            parameters["staircaseType"],
     ):
 
         # Initialize variable
@@ -47,7 +47,6 @@ def run(
 
         # Wait for key press if this is the first trial
         if nTrial == 0:
-
             # Ask the participant to press default button to start
             messageStart = visual.TextStim(
                 parameters["win"],
@@ -83,15 +82,15 @@ def run(
             catchIdx = sum(
                 parameters["staircaseType"][:nTrial][
                     parameters["Modality"][:nTrial] == modality
-                ]
+                    ]
                 == "CatchTrial"
             )
             alpha = np.array([-30, 10, -20, 20, -10, 30])[catchIdx % 6]
             stairCond = "CatchTrial"
 
         # Before trial triggers
-        parameters["oxiTask"].readInWaiting()
-        parameters["oxiTask"].channels["Channel_0"][-1] = 1  # Trigger
+        task.readInWaiting()
+        task.channels["Channel_0"][-1] = 1  # Trigger
 
         # Start trial
         (
@@ -216,7 +215,7 @@ def run(
             remain.draw()
             message.draw()
             parameters["win"].flip()
-            parameters["oxiTask"].save(
+            task.save(
                 f"{parameters['resultPath']}/{parameters['participant']}_ppg_{nTrial}.txt"
             )
 
@@ -231,8 +230,8 @@ def run(
             parameters["win"].flip()
 
             # Reset recording when ready
-            parameters["oxiTask"].setup()
-            parameters["oxiTask"].read(duration=1)
+            task.setup()
+            task.read(duration=1)
 
     # Save the final results
     print("Saving final results in .txt file...")
@@ -253,7 +252,7 @@ def run(
     )
 
     # Save last pulse oximeter recording, if relevant
-    parameters["oxiTask"].save(
+    task.save(
         f"{parameters['resultPath']}/{parameters['participant']}_ppg_{nTrial}_end.txt"
     )
 
@@ -272,18 +271,18 @@ def run(
     # Save parameters
     print("Saving Parameters in pickle...")
     save_parameter = parameters.copy()
-    for k in ["win", "heartLogo", "listenLogo", "stairCase", "oxiTask"]:
+    for k in ["win", "heartLogo", "listenLogo", "stairCase", parameters["data_stream_device"] + "Task"]:
         del save_parameter[k]
     if parameters["device"] == "mouse":
         del save_parameter["myMouse"]
     del save_parameter["handSchema"]
     del save_parameter["pulseSchema"]
     with open(
-        save_parameter["resultPath"]
-        + "/"
-        + save_parameter["participant"]
-        + "_parameters.pickle",
-        "wb",
+            save_parameter["resultPath"]
+            + "/"
+            + save_parameter["participant"]
+            + "_parameters.pickle",
+            "wb",
     ) as handle:
         pickle.dump(save_parameter, handle, protocol=pickle.HIGHEST_PROTOCOL)
 
@@ -300,12 +299,12 @@ def run(
 
 
 def trial(
-    parameters: dict,
-    alpha: float,
-    modality: str,
-    confidenceRating: bool = True,
-    feedback: bool = False,
-    nTrial: Optional[int] = None,
+        parameters: dict,
+        alpha: float,
+        modality: str,
+        confidenceRating: bool = True,
+        feedback: bool = False,
+        nTrial: Optional[int] = None,
 ) -> Tuple[
     str,
     float,
@@ -388,7 +387,8 @@ def trial(
     print(f"Starting trial - Intensity: {alpha} - Modality: {modality}")
 
     parameters["win"].mouseVisible = False
-
+    samples_per_second = parameters["samples_per_second"]
+    task = parameters[parameters["data_stream_device"] + "Task"]
     # Restart the trial until participant provide response on time
     confidence, confidenceRT, isCorrect, ratingProvided = None, None, None, False
 
@@ -420,8 +420,8 @@ def trial(
         messageRecord.draw()
 
         # Start recording trigger
-        parameters["oxiTask"].readInWaiting()
-        parameters["oxiTask"].channels["Channel_0"][-1] = 2  # Trigger
+        task.readInWaiting()
+        task.channels["Channel_0"][-1] = 2  # Trigger
 
         parameters["heartLogo"].draw()
         parameters["win"].flip()
@@ -429,20 +429,18 @@ def trial(
         startTrigger = time.time()
 
         # Recording
+
         while True:
 
             # Read the raw PPG signal from the pulse oximeter
             # You can adapt these line to work with a different setup provided that
             # it can measure and create the new variable `bpm` (the average beats per
             # minute over the 5 seconds of recording).
-            signal = (
-                parameters["oxiTask"].read(duration=5.0).recording[-75 * 6 :]  # noqa
-            )
-            signal, peaks = ppg_peaks(signal, sfreq=75, new_sfreq=1000, clipping=True)
+            signal, peaks = task.get_peaks()
 
             # Get actual heart Rate
             # Only use the last 5 seconds of the recording
-            bpm = 60000 / np.diff(np.where(peaks[-5000:])[0])
+            bpm = (samples_per_second*60) / np.diff(np.where(peaks[-5000:])[0])
 
             print(f"... bpm: {[round(i) for i in bpm]}")
 
@@ -463,8 +461,8 @@ def trial(
                 # hold the task until resolved. Cutoff values determined in
                 # parameters to correspond to biologically unlikely values.
                 if not (
-                    (np.any(bpm < parameters["HRcutOff"][0]))
-                    or (np.any(bpm > parameters["HRcutOff"][1]))
+                        (np.any(bpm < parameters["HRcutOff"][0]))
+                        or (np.any(bpm > parameters["HRcutOff"][1]))
                 ):
                     listenBPM = round(bpm.mean() * 2) / 2  # Round nearest .5
                     break
@@ -493,8 +491,8 @@ def trial(
         messageRecord.draw()
 
         # Start recording trigger
-        parameters["oxiTask"].readInWaiting()
-        parameters["oxiTask"].channels["Channel_0"][-1] = 2  # Trigger
+        task.readInWaiting()
+        task.channels["Channel_0"][-1] = 2  # Trigger
 
         parameters["listenLogo"].draw()
         parameters["win"].flip()
@@ -573,8 +571,8 @@ def trial(
     press.autoDraw = True
 
     # Sound trigger
-    parameters["oxiTask"].readInWaiting()
-    parameters["oxiTask"].channels["Channel_0"][-1] = 3
+    task.readInWaiting()
+    task.channels["Channel_0"][-1] = 3
     soundTrigger = time.time()
     parameters["win"].flip()
 
@@ -605,8 +603,8 @@ def trial(
     if (confidenceRating is True) & (respProvided is True):
 
         # Confidence rating start trigger
-        parameters["oxiTask"].readInWaiting()
-        parameters["oxiTask"].channels["Channel_0"][-1] = 4  # Trigger
+        task.readInWaiting()
+        task.channels["Channel_0"][-1] = 4  # Trigger
 
         # Confidence rating scale
         ratingStartTrigger: Optional[float] = time.time()
@@ -620,8 +618,8 @@ def trial(
         ratingStartTrigger, ratingEndTrigger = None, None
 
     # Confidence rating end trigger
-    parameters["oxiTask"].readInWaiting()
-    parameters["oxiTask"].channels["Channel_0"][-1] = 5
+    task.readInWaiting()
+    task.channels["Channel_0"][-1] = 5
     endTrigger = time.time()
 
     # Save PPG signal
@@ -843,11 +841,10 @@ def tutorial(parameters: dict):
     core.wait(1)
 
     waitInput(parameters)
-
+    task = parameters[parameters["data_stream_device"] + "Task"]
     # Run training trials with feedback
-    parameters["oxiTask"].setup().read(duration=2)
+    task.setup().read(duration=2)
     for i in range(parameters["nFeedback"]):
-
         # Ramdom selection of condition
         condition = np.random.choice(["More", "Less"])
         alpha = -20.0 if condition == "Less" else 20.0
@@ -890,9 +887,8 @@ def tutorial(parameters: dict):
         waitInput(parameters)
 
         # Run 10 training trials with feedback
-        parameters["oxiTask"].setup().read(duration=2)
+        task.setup().read(duration=2)
         for i in range(parameters["nFeedback"]):
-
             # Ramdom selection of condition
             condition = np.random.choice(["More", "Less"])
             alpha = -20.0 if condition == "Less" else 20.0
@@ -920,7 +916,7 @@ def tutorial(parameters: dict):
 
     waitInput(parameters)
 
-    parameters["oxiTask"].setup().read(duration=2)
+    task.setup().read(duration=2)
 
     # Run n training trials with confidence rating
     for i in range(parameters["nConfidence"]):
@@ -973,10 +969,10 @@ def tutorial(parameters: dict):
 
 
 def responseDecision(
-    this_hr,
-    parameters: dict,
-    feedback: bool,
-    condition: str,
+        this_hr,
+        parameters: dict,
+        feedback: bool,
+        condition: str,
 ) -> Tuple[
     float, Optional[float], bool, Optional[str], Optional[float], Optional[bool]
 ]:
@@ -1014,7 +1010,7 @@ def responseDecision(
     from psychopy import core, event, visual
 
     print("...starting decision phase.")
-
+    task = parameters[parameters["data_stream_device"] + "Task"]
     decision, decisionRT, isCorrect = None, None, None
     responseTrigger = time.time()
 
@@ -1047,7 +1043,7 @@ def responseDecision(
             decisionRT = responseKey[0][1]
 
             # Read oximeter
-            parameters["oxiTask"].readInWaiting()
+            task.readInWaiting()
 
             # Feedback
             if feedback is True:
@@ -1103,7 +1099,7 @@ def responseDecision(
         while True:
             buttons, decisionRT = parameters["myMouse"].getPressed(getTime=True)
             trialdur = clock.getTime()
-            parameters["oxiTask"].readInWaiting()
+            task.readInWaiting()
             if buttons == [1, 0, 0]:
                 decisionRT = decisionRT[0]
                 decision, respProvided = "Less", True
@@ -1184,7 +1180,7 @@ def responseDecision(
 
 
 def confidenceRatingTask(
-    parameters: dict,
+        parameters: dict,
 ) -> Tuple[Optional[float], Optional[float], bool, Optional[float]]:
     """Confidence rating scale, using keyboard or mouse inputs.
 

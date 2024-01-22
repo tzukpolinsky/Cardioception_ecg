@@ -99,13 +99,13 @@ def preprocessing(results: Union[PathLike, pd.DataFrame]) -> pd.DataFrame:
             # signal detection theory metrics
             # -------------------------------
             this_modality["Stimuli"] = (
-                this_modality.responseBPM > this_modality.listenBPM
+                    this_modality.responseBPM > this_modality.listenBPM
             )
             this_modality["Responses"] = this_modality.Decision == "More"
 
             # check that both signals have at least 5 valid trials each
             if (this_modality["Stimuli"].sum() > 5) & (
-                (~this_modality["Stimuli"]).sum() > 5
+                    (~this_modality["Stimuli"]).sum() > 5
             ):
 
                 hit, miss, fa, cr = this_modality.scores()
@@ -132,13 +132,13 @@ def preprocessing(results: Union[PathLike, pd.DataFrame]) -> pd.DataFrame:
                 ~this_modality.Confidence.isna()
             ].copy()  # Drop trials with NaN in confidence rating
             this_modality.loc[:, "Accuracy"] = (
-                (this_modality["Stimuli"] & this_modality["Responses"])
-                | (~this_modality["Stimuli"] & ~this_modality["Responses"])
+                    (this_modality["Stimuli"] & this_modality["Responses"])
+                    | (~this_modality["Stimuli"] & ~this_modality["Responses"])
             ).copy()
 
             # check that both signals have at least 5 valid trials each
             if (this_modality["Stimuli"].sum() > 5) & (
-                (~this_modality["Stimuli"]).sum() > 5
+                    (~this_modality["Stimuli"]).sum() > 5
             ):
 
                 try:
@@ -230,7 +230,7 @@ def preprocessing(results: Union[PathLike, pd.DataFrame]) -> pd.DataFrame:
 
 
 def report(
-    result_path: PathLike, report_path: Optional[PathLike] = None, task: str = "HRD"
+        result_path: PathLike, report_path: Optional[PathLike] = None, task: str = "HRD"
 ):
     """From the results folders, create HTML reports of behavioural and physiological
     data.
@@ -250,9 +250,9 @@ def report(
 
     if report_path is None:
         report_path = result_path
-    temp_notebook = Path(report_path, "temp.ipynb")
-    htmlreport = Path(report_path, f"{task}_report.html")
-
+    report_dir = os.path.dirname(report_path)
+    temp_notebook = Path(report_dir, "temp.ipynb")
+    htmlreport = report_path
     if task == "HRD":
         template = "HeartRateDiscrimination.ipynb"
     elif task == "HBC":
@@ -264,8 +264,8 @@ def report(
         parameters=dict(resultPath=str(result_path), reportPath=str(report_path)),
     )
     command = (
-        "jupyter nbconvert --to html --execute "
-        + f"--TemplateExporter.exclude_input=True {temp_notebook} --output {htmlreport}"
+            "jupyter nbconvert --to html --execute "
+            + f"--TemplateExporter.exclude_input=True {temp_notebook} --output {htmlreport}"
     )
     subprocess.call(command, shell=True)
     os.remove(temp_notebook)
