@@ -12,3 +12,4 @@ setuptools
 packaging
 cbitstruct
 pylsl
+git+https://github.com/pybluez/pybluez.git
