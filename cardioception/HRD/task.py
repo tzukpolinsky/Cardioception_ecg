@@ -1055,7 +1055,7 @@ def responseDecision(
                     )
                     acc.draw()
                     parameters["win"].flip()
-                    core.wait(2)
+                    core.wait(0.5)
                 elif isCorrect is True:
                     acc = visual.TextStim(
                         parameters["win"],
@@ -1065,7 +1065,7 @@ def responseDecision(
                     )
                     acc.draw()
                     parameters["win"].flip()
-                    core.wait(2)
+                    core.wait(0.5)
 
     if parameters["device"] == "mouse":
 
