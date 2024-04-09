@@ -1118,8 +1118,8 @@ def responseDecision(
 
                 # Show feedback for .5 seconds if enough time
                 remain = parameters["respMax"] - trialdur
-                pauseFeedback = 0.5 if (remain > 0.5) else remain
-                core.wait(pauseFeedback)
+                # pauseFeedback = 0.5 if (remain > 0.5) else remain
+                core.wait(0.5)
                 break
             elif trialdur > parameters["respMax"]:  # if too long
                 respProvided = False
