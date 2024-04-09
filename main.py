@@ -16,7 +16,7 @@ if __name__ == "__main__":
     samples_per_seconds = 250
     parameters = getParameters(language='hebrew',
         participant='Subject_01', session='Test', serialPort=None,fullscr=False,exteroception=False, data_stream_device='zephyr', samples_per_second=samples_per_seconds,
-        setup='behavioral', nTrials=40, screenNb=0, resultPath=results_path,address='58:93:D8:4A:6A:08',maxRatingTime=10,respMax=10)
+        setup='behavioral', nTrials=2, screenNb=0, resultPath=results_path,address='58:93:D8:4A:6A:08',maxRatingTime=10,respMax=10)
     # Run task
     task.run(parameters, confidenceRating=True, runTutorial=False)
 

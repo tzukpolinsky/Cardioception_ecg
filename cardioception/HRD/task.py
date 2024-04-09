@@ -7,6 +7,7 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 import pkg_resources  # type: ignore
+from psychopy import core, event, sound, visual
 
 
 def run(
@@ -26,7 +27,6 @@ def run(
         If `True`, will present a tutorial with 10 training trial with feedback
         and 5 trials with confidence rating.
     """
-    from psychopy import core, visual
     task = parameters[parameters["data_stream_device"] + "Task"]
 
     # Initialization of the Pulse Oximeter
@@ -246,7 +246,7 @@ def run(
 
     # Save the final signals file
     print("Saving PPG signal data frame...")
-    parameters["signal_df"] = parameters["signal_df"].applymap(extract_element)
+    parameters["signal_df"]['signal'] = parameters["signal_df"]['signal'].apply(lambda x:x[0])
     parameters["signal_df"].to_csv(
         parameters["resultPath"] + "/" + parameters["participant"] + "_signal.txt",
         index=False,
@@ -382,7 +382,6 @@ def trial(
         ratingEndTrigger, endTrigger : float
         Time stamp of key timepoints inside the trial.
     """
-    from psychopy import core, event, sound, visual
 
     # Print infos at each trial start
     print(f"Starting trial - Intensity: {alpha} - Modality: {modality}")
@@ -663,7 +662,6 @@ def trial(
 def waitInput(parameters: dict):
     """Wait for participant input before continue"""
 
-    from psychopy import core, event
 
     if parameters["device"] == "keyboard":
         while True:
@@ -697,7 +695,6 @@ def tutorial(parameters: dict):
 
     """
 
-    from psychopy import core, event, visual
 
     # Introduction
     intro = visual.TextStim(
@@ -1008,7 +1005,6 @@ def responseDecision(
 
     """
 
-    from psychopy import core, event, visual
 
     print("...starting decision phase.")
     task = parameters[parameters["data_stream_device"] + "Task"]
@@ -1110,8 +1106,8 @@ def responseDecision(
 
                 # Show feedback for .5 seconds if enough time
                 remain = parameters["respMax"] - trialdur
-                pauseFeedback = 0.5 if (remain > 0.5) else remain
-                core.wait(pauseFeedback)
+                # pauseFeedback = 0.5 if (remain > 0.5) else remain
+                core.wait(0.5)
                 break
             elif buttons == [0, 0, 1]:
                 decisionRT = decisionRT[-1]
@@ -1192,7 +1188,6 @@ def confidenceRatingTask(
 
     """
 
-    from psychopy import core, visual
 
     print("...starting confidence rating.")
 
