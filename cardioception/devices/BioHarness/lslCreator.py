@@ -331,10 +331,13 @@ class BioHarnessTask(BioHarnessLslCreator):
         self.readInWaiting()
         return self
 
-    def get_peaks(self, duration=5.0,sampling_rate=250):
+    def get_peaks(self, duration=5.0, sampling_rate=250):
         signal = (
             self.read(duration=duration).recording  # noqa
         )
+        if len(signal) == 0:
+            print("cant get peaks, len zero")
+            return [], np.array([])
         cleaned = nk.ecg_clean(signal, sampling_rate=sampling_rate, method="neurokit")
         signals, info = nk.ecg_peaks(cleaned, sampling_rate=sampling_rate, method="neurokit")
         return signal, np.array(signals["ECG_R_Peaks"]).astype(bool)

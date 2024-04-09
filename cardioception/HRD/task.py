@@ -246,6 +246,7 @@ def run(
 
     # Save the final signals file
     print("Saving PPG signal data frame...")
+    parameters["signal_df"] = parameters["signal_df"].applymap(extract_element)
     parameters["signal_df"].to_csv(
         parameters["resultPath"] + "/" + parameters["participant"] + "_signal.txt",
         index=False,
@@ -440,7 +441,7 @@ def trial(
 
             # Get actual heart Rate
             # Only use the last 5 seconds of the recording
-            bpm = (samples_per_second*60) / np.diff(np.where(peaks[-5000:])[0])
+            bpm = (samples_per_second * 60) / np.diff(np.where(peaks[-5000:])[0])
 
             print(f"... bpm: {[round(i) for i in bpm]}")
 
@@ -1032,7 +1033,7 @@ def responseDecision(
             decision, decisionRT = None, None
             # Record participant response (+/-)
             message = visual.TextStim(
-                parameters["win"], height=parameters["textSize"], text="Too late"
+                parameters["win"], height=parameters["textSize"], text=parameters["texts"]["textTooLate"]
             )
             message.draw()
             parameters["win"].flip()
@@ -1334,3 +1335,7 @@ def confidenceRatingTask(
     parameters["win"].flip()
 
     return confidence, confidenceRT, ratingProvided, ratingEndTrigger
+
+
+def extract_element(cell):
+    return cell[0] if isinstance(cell, list) and len(cell) > 0 else cell

@@ -11,7 +11,7 @@ from scipy.stats import norm
 from systole.detection import ppg_peaks
 
 
-def run_hrd_report(result_path: str):
+def run_hrd_report(result_path: str,sfreq:int):
     sns.set_context('talk')
     df = pd.read_csv(
         [file for file in Path(result_path).glob('*final.txt')][0]
@@ -194,7 +194,7 @@ def run_hrd_report(result_path: str):
         color = '#c44e52' if (i % 2) == 0 else '#4c72b0'
         this_df = signal_df[signal_df.nTrial == trial]  # Downsample to save memory
 
-        signal, peaks = ppg_peaks(this_df.signal, sfreq=1000)
+        signal, peaks = ppg_peaks(this_df.signal, sfreq=sfreq)
         bpm = 60000 / np.diff(np.where(peaks)[0])
 
         bpm_df = pd.concat(
@@ -234,7 +234,7 @@ def run_hrd_report(result_path: str):
         ax[0].plot(this_df.Time, this_df.signal, label='PPG', color=color, linewidth=.5)
 
         # Peaks detection
-        signal, peaks = ppg_peaks(this_df.signal, sfreq=1000)
+        signal, peaks = ppg_peaks(this_df.signal, sfreq=sfreq)
         bpm = 60000 / np.diff(np.where(peaks)[0])
         m, s, r = bpm.mean(), bpm.std(), bpm.max() - bpm.min()
         meanBPM.append(m)

@@ -10,7 +10,7 @@ import serial
 from systole import serialSim
 from systole.recording import Oximeter
 
-from cardioception.HRD.languages import danish, danish_children, english, french
+from cardioception.HRD.languages import danish, danish_children, english, french, hebrew
 from cardioception.devices.BioHarness.lslCreator import BioHarnessLslCreator, BioHarnessTask
 from cardioception.devices.OximeterWrapper.OximeterTask import OximeterTask
 
@@ -29,10 +29,12 @@ def init_oxi_device(setup, serial_port, systole_kw):
     parameters["oxiTask"].setup().read(duration=1)
     return parameters
 
-def init_zephyr_device():
+
+def init_zephyr_device(address=''):
     parameters = {}
-    parameters["zephyrTask"] = BioHarnessTask('',1,100)
+    parameters["zephyrTask"] = BioHarnessTask(address=address, port=1, timeout=100)
     return parameters
+
 
 def getParameters(
         participant: str = "SubjectTest",
@@ -52,6 +54,8 @@ def getParameters(
         resultPath: Optional[str] = None,
         language: str = "english",
         systole_kw: dict = {},
+        address='',
+        maxRatingTime=5, respMax=5
 ):
     """Create Heart Rate Discrimination task parameters.
 
@@ -209,7 +213,7 @@ def getParameters(
         * `"confidenceStop"`
     win : `psychopy.visual.window`
         The window in which to draw objects.
-
+    address : zephyr bluetooth address
     Notes
     -----
     When using the `behavioral` setup, triggers will be sent to the PPG  recording. The
@@ -235,9 +239,9 @@ def getParameters(
     parameters["monitor"] = "testMonitor"
     parameters["nFeedback"] = 5
     parameters["nConfidence"] = 8
-    parameters["respMax"] = 5
+    parameters["respMax"] = respMax
     parameters["minRatingTime"] = 0.5
-    parameters["maxRatingTime"] = 5
+    parameters["maxRatingTime"] = maxRatingTime
     parameters["isi"] = (0.25, 0.25)
     parameters["startKey"] = "space"
     parameters["allowedKeys"] = ["up", "down"]
@@ -324,7 +328,7 @@ def getParameters(
                 "stepSizes": [20, 12, 12, 7, 4, 3, 2, 1],
                 "stepType": "lin",
                 "minVal": -40.5,
-                "maxVal": 40.5,
+                "maxVal": 40.5
             },
             {
                 "label": "high",
@@ -402,10 +406,10 @@ def getParameters(
 
     parameters["setup"] = setup
     if parameters["data_stream_device"] == 'oxi':
-        parameters.update(init_oxi_device(setup,serialPort
-                                      , systole_kw))
+        parameters.update(init_oxi_device(setup, serialPort
+                                          , systole_kw))
     elif parameters["data_stream_device"] == 'zephyr':
-        parameters.update(init_zephyr_device())
+        parameters.update(init_zephyr_device(address=address))
 
     ##############
     # Load texts #
@@ -426,7 +430,10 @@ def getParameters(
         parameters["texts"] = french(
             device=device, setup=setup, exteroception=exteroception
         )
-
+    elif language == 'hebrew':
+        parameters["texts"] = hebrew(
+            device=device, setup=setup, exteroception=exteroception
+        )
     # Open window
     if parameters["setup"] == "test":
         fullscr = False

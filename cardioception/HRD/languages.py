@@ -124,6 +124,114 @@ Otherwise, you can continue to the main task."""
     return texts
 
 
+def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection[str]]:
+    """Create the text dictionary with instruction in Danish
+
+    Parameters
+    ----------
+    device : str
+        Can be `"keyboard"` or `"mouse"`.
+    setup : str
+        The experimental setup. Can be `"behavioral"` or `"test"`.
+    exteroception : bool
+        If `True`, the task includes and exteroceptive control condition.
+
+    Returns
+    -------
+    texts : dict
+
+    """
+
+    btnext = "לחצו רווח" if device == "keyboard" else "לחצו על העכבר"
+    texts = {
+        "done": "סיימת את המטלה. תודל על השתתפותך!",
+        "slower": "אטי",
+        "faster": "מהיר",
+        "checkOximeter": ".יש לוודא כי האלקטרודות מונחות היטב",
+        "stayStill": "יש להשאר סטטיים, ללא תנועה, בזמן ההקלטה",
+        "tooLate": "מאוחר מדי",
+        "correctResponse": "תשובה נכונה",
+        "incorrectResponse": "תשובה שגויה",
+        "VASlabels": ["ניחוש", "בטוח"],
+        "textHeartListening": "להקשיב לדופק",
+        "textToneListening": "להקשיב לצלילים",
+        "textTaskStart": ".להתכונן - המטלה עומדת להתחיל",
+        "textTooLate": "מאוחר מידי",
+        "textBreaks": f"הפסקה. ניתן לנוח כמידת הצורך.\n {btnext} כשרוצים לחזור למטלה.",
+        "textNext": f"בבקשה {btnext} להמשך",
+        "textWaitTrigger": "Waiting for fMRI trigger...",
+        "Decision": {
+            "Intero": """?האם הצלילים מהירים או אטיים מהדופק""",
+            "Extero": """?האם הצלילים הנוכחיים מהירים או אטיים מהצלילים הקודמים""",
+        },
+        "Confidence": "?מהי רמת הבטחון העצמי שלך בהחלטתך",
+    }
+
+    if device == "keyboard":
+        texts["responseText"] = "ללחוץ על מקש למטה אם אטי - ולמעלה אם מהיר."
+    elif device == "mouse":
+        texts["responseText"] = ".להקליק שמאלה אם אטי - ימינה אם מהיר"
+    texts[
+        "Tutorial1"
+    ] = """בניסוי זה, אנחנו נקליט את הלב שלך ונשמיע צלילים בהתאם לדופק
+
+מותר להכווין את הקשב רק אל התחושה הפנימית של הדופק, ולא למדוד אותו באף דרך אחרת. (למשל, להניח אצבע על פרק כף היד או על הצוואר.)
+"""
+    texts[
+        "Tutorial2"
+    ] = " כשמוצג איור זה, צריך להאזין ללב למשך 5 שניות. לנסות לא לזוז בפרק זמן זה, מכיוון שאנחנו מקליטים את הדופק שלך."
+
+    moreResp = "להקיש למעלה" if device == "keyboard" else "להקליק ימינה עם העכבר"
+    lessResp = "להקיש למטה" if device == "keyboard" else "להקליק שמאלה עם העכבר"
+    texts[
+        "Tutorial3_icon"
+    ] = "אחרי פרק זמן של האזנה ללב, יוצג שוב איור זה ויושמעו סדרה של צלילים."
+    texts[
+        "Tutorial3_responses"
+    ] = f"""בחצי מהמקרים, במקום שיוצג איור של לב, יוצג איור של רמקול. במקרים אלו, צריך להאזין לסדרה של צלילים, במקום ללב."""
+    if exteroception is True:
+        texts[
+            "Tutorial3bis"
+        ] = "בחצי מהמקרים, במקום שיוצג איור של לב, יוצג איור של רמקול. במקרים אלו, צריך להאזין לסדרה של צלילים, במקום ללב."
+        texts[
+            "Tutorial3ter"
+        ] = f"""אחרי כל סדרה של צלילים, יוצג איור לתגובה, ותושמע סדרה נוספת של צלילים.
+
+יש להאזין לסדרה השניה של הצלילים ולהחליט בדיוק ובמהירות האפשריים, האם הצלילים מהירים ({moreResp}) או אטיים ({lessResp}) מסדרת הצלילים השניה.
+
+
+הצלילים בסדרה השניה תמיד יהיו מהירים או אטיים מהדופק. במידה ולא בטוחים, צריך לנחש.
+"""
+    texts[
+        "Tutorial4"
+    ] = """לאחר כל ההחלטה, תוצג שאלה על רמת הטחון שלך לגבי התשובה שספקת.
+בחלק זה, הציון הגבוה ביותר (100) אומר בטחון מוחלט והציון הנמוך ביותר (0) אומר ניחוש מוחלט.
+
+יש להשתמש בעכבר כדי למקם את תשובתך על הסקאלה
+"""
+
+    texts[
+        "Tutorial5"
+    ] = """המערך הזה יחזור על עצמו לאורך הניסוי.
+
+כאשר המטלה נהיית מאוד קשה, ההבדל בין קצב הלב האמיתי שלך ובין הצלילים העוקבים עלול להיות מאוד קטן.
+
+בשלב זה, כדאי לנסות להשתמש בכל הספקטרום של הסקאלה שמייצגת בטחון עצמי, כדי לשקף את חוסר הוודאות האישית שלך. 
+
+ככל שרמת הקושי עולה לאורך המטלה, תחושה של בטחון מוחלט או חוסר ודאות מוחלט בתשובות שלך יהפוך להיות תכוף פחות."""
+
+    texts[
+        "Tutorial6"
+    ] = """ההדרכה הסתיימה. אם ישנן שאלות נוספות, זה הזמן לשאול את הנסיין. במידה ואין שאלות, ניתן להתחיל את המטלה"""
+    for p,t in texts.items():
+        if isinstance(t,dict):
+            for p2,t2 in texts[p].items():
+                texts[p][p2] = "".join(reversed(texts[p][p2]))
+            continue
+        texts[p] = "".join(reversed(texts[p]))
+    return texts
+
+
 def danish(device: str, setup: str, exteroception: bool) -> Dict[str, Collection[str]]:
     """Create the text dictionary with instruction in Danish
 
@@ -252,7 +360,7 @@ Ellers kan du fortsætte til hovedopgaven."""
 
 
 def danish_children(
-    device: str, setup: str, exteroception: bool
+        device: str, setup: str, exteroception: bool
 ) -> Dict[str, Collection[str]]:
     """Create the text dictionary with instruction in Danish (simplified version for
     children).
