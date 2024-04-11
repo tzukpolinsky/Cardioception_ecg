@@ -1,5 +1,6 @@
 # Author: Nicolas Legrand <nicolas.legrand@cas.au.dk>
 from typing import Collection, Dict
+import arabic_reshaper
 
 
 def english(device: str, setup: str, exteroception: bool) -> Dict[str, Collection[str]]:
@@ -173,13 +174,12 @@ def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection
         texts["responseText"] = ".להקליק שמאלה אם אטי - ימינה אם מהיר"
     texts[
         "Tutorial1"
-    ] = """בניסוי זה, אנחנו נקליט את הלב שלך ונשמיע צלילים בהתאם לדופק
-
-מותר להכווין את הקשב רק אל התחושה הפנימית של הדופק, ולא למדוד אותו באף דרך אחרת. (למשל, להניח אצבע על פרק כף היד או על הצוואר.)
-"""
+    ] ="""בניסוי זה, אנחנו נקליט את הלב שלך ונשמיע צלילים בהתאם לדופק
+מותר להכווין את הקשב רק אל התחושה הפנימית של הדופק, ולא למדוד אותו באף דרך אחרת.
+(למשל, להניח אצבע על פרק כף היד או על הצוואר.)"""
     texts[
         "Tutorial2"
-    ] = " כשמוצג איור זה, צריך להאזין ללב למשך 5 שניות. לנסות לא לזוז בפרק זמן זה, מכיוון שאנחנו מקליטים את הדופק שלך."
+    ] = "כשמוצג איור זה, צריך להאזין ללב למשך 5 שניות. לנסות לא לזוז בפרק זמן זה, מכיוון שאנחנו מקליטים את הדופק שלך."
 
     moreResp = "להקיש למעלה" if device == "keyboard" else "להקליק ימינה עם העכבר"
     lessResp = "להקיש למטה" if device == "keyboard" else "להקליק שמאלה עם העכבר"
@@ -223,14 +223,7 @@ def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection
     texts[
         "Tutorial6"
     ] = """ההדרכה הסתיימה. אם ישנן שאלות נוספות, זה הזמן לשאול את הנסיין. במידה ואין שאלות, ניתן להתחיל את המטלה"""
-    for p,t in texts.items():
-        if isinstance(t,dict):
-            for p2,t2 in texts[p].items():
-                texts[p][p2] = "".join(reversed(texts[p][p2]))
-            continue
-        texts[p] = "".join(reversed(texts[p]))
     return texts
-
 
 def danish(device: str, setup: str, exteroception: bool) -> Dict[str, Collection[str]]:
     """Create the text dictionary with instruction in Danish

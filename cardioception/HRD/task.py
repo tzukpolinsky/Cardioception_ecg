@@ -246,7 +246,7 @@ def run(
 
     # Save the final signals file
     print("Saving PPG signal data frame...")
-    parameters["signal_df"]['signal'] = parameters["signal_df"]['signal'].apply(lambda x:x[0])
+    parameters["signal_df"]['signal'] = parameters["signal_df"]['signal'].apply(lambda x: x[0])
     parameters["signal_df"].to_csv(
         parameters["resultPath"] + "/" + parameters["participant"] + "_signal.txt",
         index=False,
@@ -662,7 +662,6 @@ def trial(
 def waitInput(parameters: dict):
     """Wait for participant input before continue"""
 
-
     if parameters["device"] == "keyboard":
         while True:
             keys = event.getKeys()
@@ -695,18 +694,21 @@ def tutorial(parameters: dict):
 
     """
 
-
     # Introduction
     intro = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
         text=parameters["texts"]["Tutorial1"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
         pos=(0.0, -0.4),
         text=parameters["texts"]["textNext"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     intro.draw()
     press.draw()
@@ -721,12 +723,16 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         pos=(0.0, 0.3),
         text=parameters["texts"]["pulseTutorial1"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
         pos=(0.0, -0.4),
         text=parameters["texts"]["textNext"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     pulse1.draw()
     parameters["pulseSchema"].draw()
@@ -743,12 +749,16 @@ def tutorial(parameters: dict):
             height=parameters["textSize"],
             pos=(0.0, 0.2),
             text=parameters["texts"]["pulseTutorial2"],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
         )
         pulse3 = visual.TextStim(
             parameters["win"],
             height=parameters["textSize"],
             pos=(0.0, -0.2),
             text=parameters["texts"]["pulseTutorial3"],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
         )
         pulse2.draw()
         pulse3.draw()
@@ -763,6 +773,8 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         pos=(0.0, 0.3),
         text=parameters["texts"]["pulseTutorial4"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     pulse4.draw()
     parameters["handSchema"].draw()
@@ -1005,7 +1017,6 @@ def responseDecision(
 
     """
 
-
     print("...starting decision phase.")
     task = parameters[parameters["data_stream_device"] + "Task"]
     decision, decisionRT, isCorrect = None, None, None
@@ -1187,7 +1198,6 @@ def confidenceRatingTask(
         Parameters dictionary.
 
     """
-
 
     print("...starting confidence rating.")
 

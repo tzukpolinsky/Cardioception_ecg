@@ -15,13 +15,10 @@ if __name__ == "__main__":
     session_name = 'Test'
     samples_per_seconds = 250
     parameters = getParameters(language='hebrew',
-        participant='Subject_01', session='Test', serialPort=None,fullscr=False,exteroception=False, data_stream_device='zephyr', samples_per_second=samples_per_seconds,
+        participant='Subject_01', session='Test', serialPort=None,fullscr=True,exteroception=False, data_stream_device='zephyr', samples_per_second=samples_per_seconds,
         setup='behavioral', nTrials=2, screenNb=0,device='keyboard', resultPath=results_path,address='58:93:D8:4A:6A:08',maxRatingTime=10,respMax=10)
     # Run task
-    task.run(parameters, confidenceRating=True, runTutorial=False)
+    task.run(parameters, confidenceRating=True, runTutorial=True)
 
     parameters['win'].close()
-    # reports_path = os.path.join(os.getcwd(), os.path.join("resports", f"{now}.html"))
-    # # report(results_path, reports_path, task='HRD')
-    #
-    # run_hrd_report(results_path,samples_per_seconds)
+    run_hrd_report(results_path,samples_per_seconds,results_path)

@@ -254,7 +254,8 @@ def getParameters(
     parameters["nFinger"] = None
     parameters["signal_df"] = pd.DataFrame([])  # Physiological recording
     parameters["results_df"] = pd.DataFrame([])  # Behavioral results
-
+    parameters['languageStyle'] = 'RTL' if language == 'hebrew' else 'LTR'
+    parameters['alignHoriz'] = 'right' if language == 'hebrew' else 'left'
     # Set default path /Results/ 'Subject ID' /
     parameters["participant"] = participant
     parameters["session"] = session

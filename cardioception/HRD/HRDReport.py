@@ -1,3 +1,4 @@
+import os.path
 from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
@@ -11,7 +12,7 @@ from scipy.stats import norm
 from systole.detection import ppg_peaks
 
 
-def run_hrd_report(result_path: str,sfreq:int):
+def run_hrd_report(result_path: str,sfreq:int,output_folder:str):
     sns.set_context('talk')
     df = pd.read_csv(
         [file for file in Path(result_path).glob('*final.txt')][0]
@@ -35,7 +36,7 @@ def run_hrd_report(result_path: str,sfreq:int):
     signal_df = pd.read_csv(
         [file for file in Path(result_path).glob('*signal.txt')][0]
     )
-    signal_df['Time'] = np.arange(0, len(signal_df)) / 1000  # Create time vector
+    signal_df['Time'] = np.arange(0, len(signal_df)) / sfreq  # Create time vector
     palette = ['#b55d60', '#5f9e6e']
 
     fig, axs = plt.subplots(1, 2, figsize=(13, 5))
@@ -65,7 +66,10 @@ def run_hrd_report(result_path: str,sfreq:int):
             d, c = sdt.dprime(hit_rate=hr, fa_rate=far), sdt.criterion(hit_rate=hr, fa_rate=far)
 
             print(f'Condition: {cond} - d-prime: {d} - criterion: {c}')
-    plt.show()
+    if output_folder != "":
+        plt.savefig(os.path.join(output_folder,"Decision Confidence.png"))
+    else:
+        plt.show()
     fig, axs = plt.subplots(1, 2, figsize=(13, 5))
 
     for i, cond in enumerate(['Intero', 'Extero']):
@@ -87,7 +91,10 @@ def run_hrd_report(result_path: str,sfreq:int):
             axs[i].set_title(f'{cond}ception')
     sns.despine()
     plt.tight_layout()
-    plt.show()
+    if output_folder != "":
+        plt.savefig(os.path.join(output_folder, "Intero Extero.png"))
+    else:
+        plt.show()
     fig, axs = plt.subplots(1, 1, figsize=(8, 5))
 
     for cond, col in zip(['Intero', 'Extero'], ['#c44e52', '#4c72b0']):
@@ -160,6 +167,9 @@ def run_hrd_report(result_path: str,sfreq:int):
             axs[i].set_title(modality + 'ception')
             sns.despine(trim=10, ax=axs[i])
             plt.gcf()
+    if output_folder != "":
+        plt.savefig(os.path.join(output_folder,"Distribution of the tested intensities values.png"))
+    else:
         plt.show()
     sns.set_context('talk')
     fig, axs = plt.subplots(figsize=(8, 5))
@@ -187,6 +197,10 @@ def run_hrd_report(result_path: str,sfreq:int):
     plt.tight_layout()
     plt.legend()
     sns.despine()
+    if output_folder != "":
+        plt.savefig(os.path.join(output_folder, "Intensity Response.png"))
+    else:
+        plt.show()
     drop, bpm_std, bpm_df = [], [], pd.DataFrame([])
     clean_df = df.copy()
     clean_df['HeartRateOutlier'] = np.zeros(len(clean_df), dtype='bool')
@@ -195,7 +209,7 @@ def run_hrd_report(result_path: str,sfreq:int):
         this_df = signal_df[signal_df.nTrial == trial]  # Downsample to save memory
 
         signal, peaks = ppg_peaks(this_df.signal, sfreq=sfreq)
-        bpm = 60000 / np.diff(np.where(peaks)[0])
+        bpm = sfreq*60 / np.diff(np.where(peaks)[0])
 
         bpm_df = pd.concat(
             [
@@ -219,7 +233,7 @@ def run_hrd_report(result_path: str,sfreq:int):
             drop.append(e)
             clean_df.loc[t, 'HeartRateOutlier'] = True
     meanBPM, stdBPM, rangeBPM = [], [], []
-    plt.show()
+
     fig, ax = plt.subplots(nrows=2, sharex=True, figsize=(30, 10))
     for i, trial in enumerate(signal_df.nTrial.unique()):
 
@@ -235,7 +249,7 @@ def run_hrd_report(result_path: str,sfreq:int):
 
         # Peaks detection
         signal, peaks = ppg_peaks(this_df.signal, sfreq=sfreq)
-        bpm = 60000 / np.diff(np.where(peaks)[0])
+        bpm = sfreq*60 / np.diff(np.where(peaks)[0])
         m, s, r = bpm.mean(), bpm.std(), bpm.max() - bpm.min()
         meanBPM.append(m)
         stdBPM.append(s)
@@ -243,7 +257,7 @@ def run_hrd_report(result_path: str,sfreq:int):
 
         # Plot instantaneous heart rate
         ax[1].plot(this_df.Time.to_numpy()[np.where(peaks)[0][1:]],
-                   60000 / np.diff(np.where(peaks)[0]),
+                   sfreq*60 / np.diff(np.where(peaks)[0]),
                    'o-', color=color, alpha=0.6)
 
     ax[1].set_xlabel("Time (s)")
@@ -253,7 +267,10 @@ def run_hrd_report(result_path: str,sfreq:int):
     sns.despine()
     ax[0].grid(True)
     ax[1].grid(True)
-    plt.show()
+    if output_folder != "":
+        plt.savefig(os.path.join(output_folder, "signal recorded during interoceptive condition (5 seconds each).png"))
+    else:
+        plt.show()
     sns.set_context('talk')
     fig, axs = plt.subplots(figsize=(13, 5), nrows=2, ncols=2)
     meanBPM = np.delete(np.array(meanBPM), np.array(drop))
@@ -268,4 +285,7 @@ def run_hrd_report(result_path: str,sfreq:int):
     plt.tight_layout()
     print(
         f'{clean_df["HeartRateOutlier"][clean_df.Modality == "Intero"].sum()} Interoception trials and {clean_df["HeartRateOutlier"][clean_df.Modality == "Extero"].sum()} exteroception trials were dropped after trial rejection based on heart rate outliers.')
-    plt.show()
+    if output_folder != "":
+        plt.savefig(os.path.join(output_folder, "Trials analysis.png"))
+    else:
+        plt.show()
