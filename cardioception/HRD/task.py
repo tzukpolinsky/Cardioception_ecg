@@ -52,12 +52,16 @@ def run(
                 parameters["win"],
                 height=parameters["textSize"],
                 text=parameters["texts"]["textTaskStart"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=50
             )
             press = visual.TextStim(
                 parameters["win"],
                 height=parameters["textSize"],
                 pos=(0.0, -0.4),
                 text=parameters["texts"]["textNext"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=50
             )
             press.draw()
             messageStart.draw()  # Show instructions
@@ -204,6 +208,8 @@ def run(
                 parameters["win"],
                 height=parameters["textSize"],
                 text=parameters["texts"]["textBreaks"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=50
             )
             percRemain = round((nTrial / parameters["nTrials"]) * 100, 2)
             remain = visual.TextStim(
@@ -211,6 +217,8 @@ def run(
                 height=parameters["textSize"],
                 pos=(0.0, 0.2),
                 text=f" ---- {percRemain} % ---- ",
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=50
             )
             remain.draw()
             message.draw()
@@ -293,6 +301,8 @@ def run(
         height=parameters["textSize"],
         pos=(0.0, 0.0),
         text=parameters["texts"]["done"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     end.draw()
     parameters["win"].flip()
@@ -416,6 +426,8 @@ def trial(
             height=parameters["textSize"],
             pos=(0.0, 0.2),
             text=parameters["texts"]["textHeartListening"],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
         )
         messageRecord.draw()
 
@@ -451,6 +463,8 @@ def trial(
                     height=parameters["textSize"],
                     text=parameters["texts"]["checkOximeter"],
                     color="red",
+                    languageStyle=parameters['languageStyle'],
+                    wrapWidth=50
                 )
                 message.draw()
                 parameters["win"].flip()
@@ -472,6 +486,8 @@ def trial(
                         height=parameters["textSize"],
                         text=parameters["texts"]["stayStill"],
                         color="red",
+                        languageStyle=parameters['languageStyle'],
+                        wrapWidth=50
                     )
                     message.draw()
                     parameters["win"].flip()
@@ -487,6 +503,8 @@ def trial(
             height=parameters["textSize"],
             pos=(0.0, 0.2),
             text=parameters["texts"]["textToneListening"],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
         )
         messageRecord.draw()
 
@@ -559,6 +577,8 @@ def trial(
         height=parameters["textSize"],
         pos=(0, 0.4),
         text=parameters["texts"]["Decision"][modality],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     message.autoDraw = True
 
@@ -567,6 +587,8 @@ def trial(
         height=parameters["textSize"],
         text=parameters["texts"]["responseText"],
         pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     press.autoDraw = True
 
@@ -814,6 +836,8 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         pos=(0.0, 0.3),
         text=parameters["texts"]["Tutorial2"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     recording.draw()
     parameters["heartLogo"].draw()
@@ -829,6 +853,8 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         pos=(0.0, 0.3),
         text=parameters["texts"]["Tutorial3_icon"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     parameters["heartLogo"].draw()
     listenIcon.draw()
@@ -844,6 +870,8 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         pos=(0.0, 0.0),
         text=parameters["texts"]["Tutorial3_responses"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     listenResponse.draw()
     press.draw()
@@ -874,6 +902,8 @@ def tutorial(parameters: dict):
             height=parameters["textSize"],
             pos=(0.0, -0.2),
             text=parameters["texts"]["Tutorial3bis"],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
         )
         exteroText.draw()
         parameters["listenLogo"].draw()
@@ -888,6 +918,8 @@ def tutorial(parameters: dict):
             height=parameters["textSize"],
             pos=(0.0, 0.0),
             text=parameters["texts"]["Tutorial3ter"],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
         )
         exteroResponse.draw()
         press.draw()
@@ -918,6 +950,8 @@ def tutorial(parameters: dict):
         parameters["win"],
         height=parameters["textSize"],
         text=parameters["texts"]["Tutorial4"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     confidenceText.draw()
     press.draw()
@@ -958,6 +992,8 @@ def tutorial(parameters: dict):
         parameters["win"],
         height=parameters["textSize"],
         text=parameters["texts"]["Tutorial5"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     taskPresentation.draw()
     press.draw()
@@ -970,6 +1006,8 @@ def tutorial(parameters: dict):
         parameters["win"],
         height=parameters["textSize"],
         text=parameters["texts"]["Tutorial6"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
     taskPresentation.draw()
     press.draw()
@@ -1040,7 +1078,8 @@ def responseDecision(
             decision, decisionRT = None, None
             # Record participant response (+/-)
             message = visual.TextStim(
-                parameters["win"], height=parameters["textSize"], text=parameters["texts"]["textTooLate"]
+                parameters["win"], height=parameters["textSize"], text=parameters["texts"]["textTooLate"],languageStyle=parameters['languageStyle'],
+        wrapWidth=50
             )
             message.draw()
             parameters["win"].flip()
@@ -1063,6 +1102,8 @@ def responseDecision(
                         height=parameters["textSize"],
                         color="red",
                         text="False",
+                        languageStyle=parameters['languageStyle'],
+                        wrapWidth=50
                     )
                     acc.draw()
                     parameters["win"].flip()
@@ -1073,6 +1114,8 @@ def responseDecision(
                         height=parameters["textSize"],
                         color="green",
                         text="Correct",
+                        languageStyle=parameters['languageStyle'],
+                        wrapWidth=50
                     )
                     acc.draw()
                     parameters["win"].flip()
@@ -1087,6 +1130,8 @@ def responseDecision(
             color="white",
             text=parameters["texts"]["slower"],
             pos=(-0.2, 0.2),
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
         )
         faster = visual.TextStim(
             parameters["win"],
@@ -1094,6 +1139,8 @@ def responseDecision(
             color="white",
             text=parameters["texts"]["faster"],
             pos=(0.2, 0.2),
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
         )
         slower.draw()
         faster.draw()
@@ -1152,6 +1199,8 @@ def responseDecision(
                 text=parameters["texts"]["tooLate"],
                 color="red",
                 pos=(0.0, -0.2),
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=50
             )
             message.draw()
             parameters["win"].flip()
@@ -1172,6 +1221,8 @@ def responseDecision(
                     pos=(0.0, -0.2),
                     color=colorFeedback,
                     text=textFeedback,
+                    languageStyle=parameters['languageStyle'],
+                    wrapWidth=50
                 )
                 acc.draw()
                 parameters["win"].flip()
@@ -1223,6 +1274,8 @@ def confidenceRatingTask(
             parameters["win"],
             height=parameters["textSize"],
             text=parameters["texts"]["Confidence"],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
         )
 
         # Wait for response
@@ -1255,6 +1308,8 @@ def confidenceRatingTask(
             height=parameters["textSize"],
             pos=(0, 0.2),
             text=parameters["texts"]["Confidence"],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
         )
         slider = visual.Slider(
             win=parameters["win"],
@@ -1268,6 +1323,7 @@ def confidenceRatingTask(
             color="LightGray",
             flip=False,
             labelHeight=0.1 * 0.6,
+
         )
         slider.marker.size = (0.03, 0.03)
         clock = core.Clock()
@@ -1328,6 +1384,8 @@ def confidenceRatingTask(
                     text="Too late",
                     color="red",
                     pos=(0.0, -0.2),
+                    languageStyle=parameters['languageStyle'],
+                    wrapWidth=50
                 )
                 message.draw()
                 parameters["win"].flip()
