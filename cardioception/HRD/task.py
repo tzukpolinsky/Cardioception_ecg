@@ -1095,7 +1095,7 @@ def responseDecision(
             # Feedback
             if feedback is True:
                 # Is the answer Correct?
-                isCorrect = True if (decision == condition) else False
+                isCorrect = decision == condition
                 if isCorrect is False:
                     acc = visual.TextStim(
                         parameters["win"],
@@ -1207,7 +1207,7 @@ def responseDecision(
             core.wait(0.5)
         else:
             # Is the answer Correct?
-            isCorrect = True if (decision == condition) else False
+            isCorrect = decision == condition
             # Feedback
             if feedback is True:
                 if isCorrect == 0:
