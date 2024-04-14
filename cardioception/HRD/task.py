@@ -1091,7 +1091,10 @@ def responseDecision(
 
             # Read oximeter
             task.readInWaiting()
-
+            if decision == 'down':
+                decision = 'Less'
+            else:
+                decision = 'More'
             # Feedback
             if feedback is True:
                 # Is the answer Correct?
