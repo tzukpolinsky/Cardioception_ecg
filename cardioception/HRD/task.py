@@ -1088,13 +1088,13 @@ def responseDecision(
             respProvided = True
             decision = responseKey[0][0]
             decisionRT = responseKey[0][1]
-
-            # Read oximeter
-            task.readInWaiting()
             if decision == 'down':
                 decision = 'Less'
             else:
                 decision = 'More'
+            # Read oximeter
+            task.readInWaiting()
+
             # Feedback
             if feedback is True:
                 # Is the answer Correct?
