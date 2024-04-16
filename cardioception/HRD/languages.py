@@ -157,8 +157,8 @@ def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection
         "textToneListening": "להקשיב לצלילים",
         "textTaskStart": "המטלה עומדת להתחיל",
         "textTooLate": "מאוחר מדי",
-        "textBreaks": f"הפסקה. ניתן לנוח כמידת הצורך.\n {btnext}כשרוצים לחזור למטלה.",
-        "textNext": f"בבקשה {btnext} להמשך ",
+        "textBreaks": f" הפסקה. ניתן לנוח כמידת הצורך.\n {btnext}כשרוצים לחזור למטלה.",
+        "textNext": f" בבקשה {btnext} להמשך ",
         "textWaitTrigger": "Waiting for fMRI trigger...",
         "Decision": {
             "Intero": """האם הצלילים מהירים או אטיים מהדופק?""",

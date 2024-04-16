@@ -1095,35 +1095,6 @@ def responseDecision(
             # Read oximeter
             task.readInWaiting()
 
-            # Feedback
-            if feedback is True:
-                # Is the answer Correct?
-                isCorrect = decision == condition
-                if isCorrect is False:
-                    acc = visual.TextStim(
-                        parameters["win"],
-                        height=parameters["textSize"],
-                        color="red",
-                        text="False",
-                        languageStyle=parameters['languageStyle'],
-                        wrapWidth=50
-                    )
-                    acc.draw()
-                    parameters["win"].flip()
-                    core.wait(0.5)
-                elif isCorrect is True:
-                    acc = visual.TextStim(
-                        parameters["win"],
-                        height=parameters["textSize"],
-                        color="green",
-                        text="Correct",
-                        languageStyle=parameters['languageStyle'],
-                        wrapWidth=50
-                    )
-                    acc.draw()
-                    parameters["win"].flip()
-                    core.wait(0.5)
-
     if parameters["device"] == "mouse":
 
         # Initialise response feedback
@@ -1208,29 +1179,27 @@ def responseDecision(
             message.draw()
             parameters["win"].flip()
             core.wait(0.5)
-        else:
-            # Is the answer Correct?
-            isCorrect = decision == condition
-            # Feedback
-            if feedback is True:
-                if isCorrect == 0:
-                    textFeedback = parameters["texts"]["incorrectResponse"]
-                else:
-                    textFeedback = parameters["texts"]["correctResponse"]
-                colorFeedback = "red" if isCorrect == 0 else "green"
-                acc = visual.TextStim(
-                    parameters["win"],
-                    height=parameters["textSize"],
-                    pos=(0.0, -0.2),
-                    color=colorFeedback,
-                    text=textFeedback,
-                    languageStyle=parameters['languageStyle'],
-                    wrapWidth=50
-                )
-                acc.draw()
-                parameters["win"].flip()
-                core.wait(1)
 
+    isCorrect = decision == condition
+    # Feedback
+    if feedback is True:
+        if isCorrect :
+            textFeedback = parameters["texts"]["correctResponse"]
+        else:
+            textFeedback = parameters["texts"]["incorrectResponse"]
+        colorFeedback = "green" if isCorrect  else "red"
+        acc = visual.TextStim(
+            parameters["win"],
+            height=parameters["textSize"],
+            pos=(0.0, -0.2),
+            color=colorFeedback,
+            text=textFeedback,
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
+        )
+        acc.draw()
+        parameters["win"].flip()
+        core.wait(1)
     return (
         responseMadeTrigger,
         responseTrigger,

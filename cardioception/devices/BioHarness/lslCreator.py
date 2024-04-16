@@ -339,7 +339,7 @@ class BioHarnessTask(BioHarnessLslCreator):
             print("empty signal")
             return [], np.array([])
         cleaned = nk.ecg_clean(signal, sampling_rate=sampling_rate, method="neurokit")
-        if len(cleaned.array) < sampling_rate*0.1:
+        if len(cleaned) < sampling_rate*0.1:
             print("empty cleaned signal")
             return [], np.array([])
         signals, info = nk.ecg_peaks(cleaned, sampling_rate=sampling_rate, method="neurokit")
