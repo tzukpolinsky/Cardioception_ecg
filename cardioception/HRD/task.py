@@ -1294,15 +1294,18 @@ def confidenceRatingTask(
             name="slider",
             pos=(0, -0.2),
             size=(0.7, 0.1),
-            labels=parameters["texts"]["VASlabels"],
             granularity=1,
             ticks=(0, 100),
-            style=("rating"),
+            style="rating",
             color="LightGray",
             flip=False,
-            labelHeight=0.1 * 0.6,
 
         )
+        text_labels = [
+            visual.TextStim(parameters["win"], text=label, pos=pos, languageStyle=parameters['languageStyle'],
+                            wrapWidth=50, height=parameters["textSize"]) for label, pos in
+            zip(parameters["texts"]["VASlabels"], [(-0.35, -0.3), (0.35, -0.3)])]
+
         slider.marker.size = (0.03, 0.03)
         clock = core.Clock()
         parameters["myMouse"].clickReset()
@@ -1313,7 +1316,7 @@ def confidenceRatingTask(
             trialdur = clock.getTime()
             buttons, confidenceRT = parameters["myMouse"].getPressed(getTime=True)
 
-            # Mouse position (keep in in the rectangle)
+            # Mouse position (keep in the rectangle)
             newPos = parameters["myMouse"].getPos()
             if newPos[0] < -0.5:
                 newX = -0.5
@@ -1346,6 +1349,8 @@ def confidenceRatingTask(
                 )
                 # Change marker color after response provided
                 slider.marker.color = "green"
+                for label in text_labels:
+                    label.draw()
                 slider.draw()
                 message.draw()
                 parameters["win"].flip()
@@ -1369,6 +1374,8 @@ def confidenceRatingTask(
                 parameters["win"].flip()
                 core.wait(0.5)
                 break
+            for label in text_labels:
+                label.draw()
             slider.draw()
             message.draw()
             parameters["win"].flip()
