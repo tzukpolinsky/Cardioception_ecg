@@ -35,7 +35,7 @@ def run(
     # Show tutorial and training trials
     if runTutorial is True:
         tutorial(parameters)
-
+    nTrial_before_break = 0
     for nTrial, modality, trialType in zip(
             range(parameters["nTrials"]),
             parameters["Modality"],
@@ -198,7 +198,7 @@ def run(
             + "/"
             + parameters["participant"]
             + parameters["session"]
-            + ".txt",
+            + ".csv",
             index=False,
         )
 
@@ -223,10 +223,14 @@ def run(
             remain.draw()
             message.draw()
             parameters["win"].flip()
-            task.save(
-                f"{parameters['resultPath']}/{parameters['participant']}_ppg_{nTrial}.txt"
-            )
-
+            signal_df = parameters['signal_df']
+            current_df = signal_df[(signal_df['nTrial'] <= nTrial) & (signal_df['nTrial'] >= nTrial_before_break)]
+            current_df['signal'] = current_df['signal'].apply(lambda x: x[0])
+            current_df.to_csv(
+                parameters["resultPath"] + "/" + parameters["participant"] + parameters[
+                    "session"] + f"signal_{nTrial_before_break}_{nTrial}.csv",
+                index=False)
+            nTrial_before_break = nTrial
             # Wait for participant input before continue
             waitInput(parameters)
 
@@ -242,27 +246,22 @@ def run(
             task.read(duration=1)
 
     # Save the final results
-    print("Saving final results in .txt file...")
+    print("Saving final results in .csv file...")
     parameters["results_df"].to_csv(
         parameters["resultPath"]
         + "/"
         + parameters["participant"]
         + parameters["session"]
-        + "_final.txt",
+        + "_final.csv",
         index=False,
     )
 
     # Save the final signals file
-    print("Saving PPG signal data frame...")
+    print("Saving signal data frame...")
     parameters["signal_df"]['signal'] = parameters["signal_df"]['signal'].apply(lambda x: x[0])
     parameters["signal_df"].to_csv(
-        parameters["resultPath"] + "/" + parameters["participant"] + "_signal.txt",
+        parameters["resultPath"] + "/" + parameters["participant"] + "_signal.csv",
         index=False,
-    )
-
-    # Save last pulse oximeter recording, if relevant
-    task.save(
-        f"{parameters['resultPath']}/{parameters['participant']}_ppg_{nTrial}_end.txt"
     )
 
     # Save posterios (if relevant)
@@ -307,6 +306,8 @@ def run(
     end.draw()
     parameters["win"].flip()
     core.wait(3)
+    print("done task")
+    core.quit()
 
 
 def trial(
@@ -444,11 +445,11 @@ def trial(
 
         while True:
 
-            # Read the raw PPG signal from the pulse oximeter
+            # Read the raw signal from the device
             # You can adapt these line to work with a different setup provided that
             # it can measure and create the new variable `bpm` (the average beats per
             # minute over the 5 seconds of recording).
-            signal, peaks = task.get_peaks()
+            signal, peaks, timestamps = task.get_peaks()
 
             # Get actual heart Rate
             # Only use the last 5 seconds of the recording
@@ -644,14 +645,13 @@ def trial(
     task.channels["Channel_0"][-1] = 5
     endTrigger = time.time()
 
-    # Save PPG signal
+    # Save physio signal
     if nTrial is not None:  # Not during the tutorial
         if modality == "Intero":
-            this_df = None
-            # Save physio signal
             this_df = pd.DataFrame(
                 {
                     "signal": signal,
+                    "time": timestamps,
                     "nTrial": pd.Series([nTrial] * len(signal), dtype="category"),
                 }
             )
@@ -706,39 +706,7 @@ def waitInput(parameters: dict):
                 core.quit()
 
 
-def tutorial(parameters: dict):
-    """Run tutorial before task run.
-
-    Parameters
-    ----------
-    parameters : dict
-        Task parameters.
-
-    """
-
-    # Introduction
-    intro = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["Tutorial1"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=50
-    )
-    press = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        pos=(0.0, -0.4),
-        text=parameters["texts"]["textNext"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=50
-    )
-    intro.draw()
-    press.draw()
-    parameters["win"].flip()
-    core.wait(1)
-
-    waitInput(parameters)
-
+def pulse_tutorial(parameters: dict):
     # Pusle oximeter tutorial
     pulse1 = visual.TextStim(
         parameters["win"],
@@ -829,6 +797,43 @@ def tutorial(parameters: dict):
 
             core.wait(0.5)
             break
+
+
+def tutorial(parameters: dict):
+    """Run tutorial before task run.
+
+    Parameters
+    ----------
+    parameters : dict
+        Task parameters.
+
+    """
+
+    # Introduction
+    intro = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["Tutorial1"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
+    )
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        pos=(0.0, -0.4),
+        text=parameters["texts"]["textNext"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
+    )
+    intro.draw()
+    press.draw()
+    parameters["win"].flip()
+    core.wait(1)
+
+    waitInput(parameters)
+
+    if parameters["data_stream_device"] == 'oxi':
+        pulse_tutorial(parameters)
 
     # Heartrate recording
     recording = visual.TextStim(
@@ -1078,8 +1083,9 @@ def responseDecision(
             decision, decisionRT = None, None
             # Record participant response (+/-)
             message = visual.TextStim(
-                parameters["win"], height=parameters["textSize"], text=parameters["texts"]["textTooLate"],languageStyle=parameters['languageStyle'],
-        wrapWidth=50
+                parameters["win"], height=parameters["textSize"], text=parameters["texts"]["textTooLate"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=50
             )
             message.draw()
             parameters["win"].flip()
@@ -1183,11 +1189,11 @@ def responseDecision(
     isCorrect = decision == condition
     # Feedback
     if feedback is True:
-        if isCorrect :
+        if isCorrect:
             textFeedback = parameters["texts"]["correctResponse"]
         else:
             textFeedback = parameters["texts"]["incorrectResponse"]
-        colorFeedback = "green" if isCorrect  else "red"
+        colorFeedback = "green" if isCorrect else "red"
         acc = visual.TextStim(
             parameters["win"],
             height=parameters["textSize"],
