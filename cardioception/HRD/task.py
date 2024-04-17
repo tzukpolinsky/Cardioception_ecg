@@ -874,7 +874,7 @@ def tutorial(parameters: dict):
     listenIcon.draw()
     press.draw()
     parameters["win"].flip()
-    core.wait(1)
+    core.wait(5)
     progress_bar = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
