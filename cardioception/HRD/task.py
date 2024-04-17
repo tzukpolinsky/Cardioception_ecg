@@ -1,5 +1,5 @@
 # Author: Nicolas Legrand <nicolas.legrand@cas.au.dk>
-
+import json
 import pickle
 import time
 from typing import Optional, Tuple
@@ -31,11 +31,16 @@ def run(
 
     # Initialization of the Pulse Oximeter
     task.setup().read(duration=1)
-
+    subject_meta = {}
+    subject_meta['startTutorial'] = time.time()
     # Show tutorial and training trials
     if runTutorial is True:
         tutorial(parameters)
+    subject_meta['endTutorial'] = time.time()
+    subject_meta['durationTutorial'] = subject_meta['endTutorial'] - subject_meta['startTutorial']
     nTrial_before_break = 0
+    subject_meta['startExp'] = time.time()
+    break_number = 1
     for nTrial, modality, trialType in zip(
             range(parameters["nTrials"]),
             parameters["Modality"],
@@ -204,6 +209,7 @@ def run(
 
         # Breaks
         if (nTrial % parameters["nBreaking"] == 0) & (nTrial != 0):
+            subject_meta[f'startBreak{break_number}'] = time.time()
             message = visual.TextStim(
                 parameters["win"],
                 height=parameters["textSize"],
@@ -233,18 +239,20 @@ def run(
             nTrial_before_break = nTrial
             # Wait for participant input before continue
             waitInput(parameters)
-
+            subject_meta[f'endBreak{break_number}'] = time.time()
+            subject_meta[f'durationBreak{break_number}'] = subject_meta[f'endBreak{break_number}'] - subject_meta[f'startBreak{break_number}']
+            break_number += 1
             # Fixation cross
             fixation = visual.GratingStim(
                 win=parameters["win"], mask="cross", size=0.1, pos=[0, 0], sf=0
             )
             fixation.draw()
             parameters["win"].flip()
-
             # Reset recording when ready
             task.setup()
             task.read(duration=1)
-
+    subject_meta['endExp'] = time.time()
+    subject_meta['durationExp'] = subject_meta['endExp'] - subject_meta['startExp']
     # Save the final results
     print("Saving final results in .csv file...")
     parameters["results_df"].to_csv(
@@ -293,7 +301,12 @@ def run(
             "wb",
     ) as handle:
         pickle.dump(save_parameter, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
+    print("Saving times in json...")
+    with open(save_parameter["resultPath"]
+            + "/"
+            + save_parameter["participant"]
+            +'_times.json', 'w') as f:
+        json.dump(subject_meta, f)
     # End of the task
     end = visual.TextStim(
         parameters["win"],
@@ -307,6 +320,7 @@ def run(
     parameters["win"].flip()
     core.wait(3)
     print("done task")
+    parameters["win"].close()
     core.quit()
 
 
@@ -421,9 +435,9 @@ def trial(
                                         ticks=(0, parameters["nTrials"] if not feedback else parameters["nFeedback"]),
                                         granularity=0,
                                         style='slider',
-                                        pos=(0.55,-0.45),
-                                        size=(0.2,0.05),
-                                        color='LightGray', readOnly=True,startValue=nTrial)
+                                        pos=(0.55, -0.45),
+                                        size=(0.2, 0.05),
+                                        color='LightGray', readOnly=True, startValue=nTrial)
         # progress_slider.markerPos = nTrial
         progress_slider.draw()
     if modality == "Intero":
@@ -881,7 +895,7 @@ def tutorial(parameters: dict):
         text=parameters["texts"]["Tutorial7"],
         languageStyle=parameters['languageStyle'],
         wrapWidth=50,
-        pos=(0.0,-0.3)
+        pos=(0.0, -0.3)
     )
     progress_bar.draw()
     progress_slider = visual.Slider(win=parameters['win'], name='progress',
@@ -927,7 +941,7 @@ def tutorial(parameters: dict):
             alpha,
             "Intero",
             feedback=True,
-            confidenceRating=False,nTrial=i
+            confidenceRating=False, nTrial=i
         )
 
     # If extero conditions required, show tutorial.
@@ -963,7 +977,6 @@ def tutorial(parameters: dict):
 
         # progress_slider.markerPos = nTrial
 
-
         press.draw()
         parameters["win"].flip()
         core.wait(1)
@@ -980,7 +993,7 @@ def tutorial(parameters: dict):
                 alpha,
                 "Extero",
                 feedback=True,
-                confidenceRating=False,nTrial=i
+                confidenceRating=False, nTrial=i
             )
 
     ###################
@@ -1004,13 +1017,14 @@ def tutorial(parameters: dict):
 
     # Run n training trials with confidence rating
     prev_number_of_trails = parameters['nTrials']
-    parameters['nTrials'] = parameters["nConfidence"] #beacuase we dont want to give feedback and we want the slider to represent the amount
+    parameters['nTrials'] = parameters[
+        "nConfidence"]  # beacuase we dont want to give feedback and we want the slider to represent the amount
     for i in range(parameters['nConfidence']):
         modality = "Intero"
         condition = np.random.choice(["More", "Less"])
         stim_intense = np.random.choice(np.array([1, 10, 30]))
         alpha = -stim_intense if condition == "Less" else stim_intense
-        _ = trial(parameters, alpha, modality, confidenceRating=True,nTrial=i)
+        _ = trial(parameters, alpha, modality, confidenceRating=True, nTrial=i)
     # If extero conditions required, show tutorial.
     if parameters["ExteroCondition"] is True:
         # Run n training trials with confidence rating
@@ -1023,7 +1037,7 @@ def tutorial(parameters: dict):
                 parameters,
                 alpha,
                 modality,
-                confidenceRating=True,nTrial=i
+                confidenceRating=True, nTrial=i
             )
     parameters['nTrials'] = prev_number_of_trails
 
@@ -1337,7 +1351,7 @@ def confidenceRatingTask(
             ticks=(0, 100),
             style="rating",
             color="LightGray",
-            flip=False,startValue=50
+            flip=False, startValue=50
 
         )
         text_labels = [

@@ -144,7 +144,7 @@ def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection
 
     btnext = "לחצו רווח" if device == "keyboard" else "לחצו על העכבר"
     texts = {
-        "done": "סיימת את המטלה. תודל על השתתפותך!",
+        "done": "סיימת את המטלה. תודה על השתתפותך!",
         "slower": "אטי",
         "faster": "מהיר",
         "checkOximeter": "צריך לוודא כי האלקטרודות מונחות היטב",
