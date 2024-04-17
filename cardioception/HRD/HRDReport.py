@@ -15,7 +15,7 @@ from systole.detection import ppg_peaks
 def run_hrd_report(result_path: str,sfreq:int,output_folder:str):
     sns.set_context('talk')
     df = pd.read_csv(
-        [file for file in Path(result_path).glob('*final.txt')][0]
+        [file for file in Path(result_path).glob('*final.csv')][0]
     )
 
     # History of posteriors distribution
@@ -34,7 +34,7 @@ def run_hrd_report(result_path: str,sfreq:int,output_folder:str):
 
     # PPG signal
     signal_df = pd.read_csv(
-        [file for file in Path(result_path).glob('*signal.txt')][0]
+        [file for file in Path(result_path).glob('*signal.csv')][0]
     )
     signal_df['Time'] = np.arange(0, len(signal_df)) / sfreq  # Create time vector
     palette = ['#b55d60', '#5f9e6e']
