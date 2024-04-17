@@ -9,13 +9,13 @@ from metadpy import sdt
 from metadpy.plotting import plot_confidence
 from metadpy.utils import discreteRatings, trials2counts
 from scipy.stats import norm
-from systole.detection import ppg_peaks
+import neurokit2 as nk
 
 
 def run_hrd_report(result_path: str,sfreq:int,output_folder:str):
     sns.set_context('talk')
     df = pd.read_csv(
-        [file for file in Path(result_path).glob('*final.txt')][0]
+        [file for file in Path(result_path).glob('*final.csv')][0]
     )
 
     # History of posteriors distribution
@@ -34,7 +34,7 @@ def run_hrd_report(result_path: str,sfreq:int,output_folder:str):
 
     # PPG signal
     signal_df = pd.read_csv(
-        [file for file in Path(result_path).glob('*signal.txt')][0]
+        [file for file in Path(result_path).glob('*signal.csv')][0]
     )
     signal_df['Time'] = np.arange(0, len(signal_df)) / sfreq  # Create time vector
     palette = ['#b55d60', '#5f9e6e']
@@ -208,7 +208,10 @@ def run_hrd_report(result_path: str,sfreq:int,output_folder:str):
         color = '#c44e52' if (i % 2) == 0 else '#4c72b0'
         this_df = signal_df[signal_df.nTrial == trial]  # Downsample to save memory
 
-        signal, peaks = ppg_peaks(this_df.signal, sfreq=sfreq)
+        cleaned = nk.ecg_clean(this_df.signal, sampling_rate=sfreq, method="neurokit")
+
+        signals, info = nk.ecg_peaks(cleaned, sampling_rate=sfreq, method="neurokit")
+        peaks = np.array(signals["ECG_R_Peaks"]).astype(bool)
         bpm = sfreq*60 / np.diff(np.where(peaks)[0])
 
         bpm_df = pd.concat(
@@ -246,9 +249,11 @@ def run_hrd_report(result_path: str,sfreq:int,output_folder:str):
             ax[1].axvspan(this_df.Time.iloc[0], this_df.Time.iloc[-1], alpha=.3, color='gray')
 
         ax[0].plot(this_df.Time, this_df.signal, label='PPG', color=color, linewidth=.5)
+        cleaned = nk.ecg_clean(this_df.signal, sampling_rate=sfreq, method="neurokit")
 
+        signals, info = nk.ecg_peaks(cleaned, sampling_rate=sfreq, method="neurokit")
+        peaks = np.array(signals["ECG_R_Peaks"]).astype(bool)
         # Peaks detection
-        signal, peaks = ppg_peaks(this_df.signal, sfreq=sfreq)
         bpm = sfreq*60 / np.diff(np.where(peaks)[0])
         m, s, r = bpm.mean(), bpm.std(), bpm.max() - bpm.min()
         meanBPM.append(m)
@@ -289,3 +294,7 @@ def run_hrd_report(result_path: str,sfreq:int,output_folder:str):
         plt.savefig(os.path.join(output_folder, "Trials analysis.png"))
     else:
         plt.show()
+
+
+if __name__ == '__main__':
+    run_hrd_report("C:\\Users\\rsolomon\\data\\safeHeart\\intreospection\\results\\",250,"C:\\Users\\rsolomon\\data\\safeHeart\\intreospection\\results\\")
