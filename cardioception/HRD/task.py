@@ -416,7 +416,15 @@ def trial(
         print("User abort")
         parameters["win"].close()
         core.quit()
-
+    if nTrial != None:
+        progress_slider = visual.Slider(win=parameters['win'], name='progress',
+                                        ticks=(0, parameters["nTrials"]),
+                                        granularity=0,
+                                        style='slider',
+                                        pos=(0.0, 0.4),
+                                        color='LightGray', readOnly=True,startValue=nTrial)
+        # progress_slider.markerPos = nTrial
+        progress_slider.draw()
     if modality == "Intero":
 
         ###########
@@ -987,7 +995,7 @@ def tutorial(parameters: dict):
                 parameters,
                 alpha,
                 modality,
-                confidenceRating=True,
+                confidenceRating=True
             )
 
     #################
@@ -1235,16 +1243,17 @@ def confidenceRatingTask(
 
     if parameters["device"] == "keyboard":
 
-        markerStart = np.random.choice(
-            np.arange(parameters["confScale"][0], parameters["confScale"][1])
-        )
+        # markerStart = np.random.choice(
+        #     np.arange(parameters["confScale"][0], parameters["confScale"][1])
+        # )
+        markerStart = (parameters["confScale"][0] + parameters["confScale"][1]) // 2
         ratingScale = visual.RatingScale(
             parameters["win"],
             low=parameters["confScale"][0],
             high=parameters["confScale"][1],
             noMouse=True,
             labels=parameters["labelsRating"],
-            acceptKeys="down",
+            acceptKeys="space",
             markerStart=markerStart,
         )
 
@@ -1298,7 +1307,7 @@ def confidenceRatingTask(
             ticks=(0, 100),
             style="rating",
             color="LightGray",
-            flip=False,
+            flip=False,startValue=50
 
         )
         text_labels = [
