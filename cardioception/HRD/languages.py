@@ -219,7 +219,7 @@ def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection
         ] = """לאחר כל ההחלטה, תוצג שאלה על רמת הבטחון שלך לגבי התשובה שספקת.
             בחלק זה, הציון הגבוה ביותר (10) אומר בטחון מוחלט והציון הנמוך ביותר (0) אומר ניחוש מוחלט.
 
-             יש להשתמש להקיש ימינה ושמאלה כדי למקם את תשובתך על הסקאלה ולסיום להקיש למטה
+             יש להשתמש להקיש ימינה ושמאלה כדי למקם את תשובתך על הסקאלה ולסיום להקיש רווח
             """
 
     texts[
@@ -235,6 +235,10 @@ def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection
     texts[
         "Tutorial6"
     ] = """ההדרכה הסתיימה. אם ישנן שאלות נוספות, זה הזמן לשאול את הנסיין. במידה ואין שאלות, ניתן להתחיל את המטלה"""
+    texts[
+        "Tutorial7"
+    ] = """לאורך המטלה יוצג מצד ימין למטה של המסך,
+בר התקדמות המייצג את אחוז ההתקדמות במטלה."""
     return texts
 
 def danish(device: str, setup: str, exteroception: bool) -> Dict[str, Collection[str]]:

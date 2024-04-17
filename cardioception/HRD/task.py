@@ -418,10 +418,11 @@ def trial(
         core.quit()
     if nTrial != None:
         progress_slider = visual.Slider(win=parameters['win'], name='progress',
-                                        ticks=(0, parameters["nTrials"]),
+                                        ticks=(0, parameters["nTrials"] if not feedback else parameters["nFeedback"]),
                                         granularity=0,
                                         style='slider',
-                                        pos=(0.0, 0.4),
+                                        pos=(0.55,-0.45),
+                                        size=(0.2,0.05),
                                         color='LightGray', readOnly=True,startValue=nTrial)
         # progress_slider.markerPos = nTrial
         progress_slider.draw()
@@ -874,7 +875,27 @@ def tutorial(parameters: dict):
     press.draw()
     parameters["win"].flip()
     core.wait(1)
-
+    progress_bar = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["Tutorial7"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50,
+        pos=(0.0,-0.3)
+    )
+    progress_bar.draw()
+    progress_slider = visual.Slider(win=parameters['win'], name='progress',
+                                    ticks=(0, 10),
+                                    granularity=0,
+                                    style='slider',
+                                    pos=(0.55, -0.45),
+                                    size=(0.2, 0.05),
+                                    color='LightGray', readOnly=True, startValue=4)
+    progress_slider.draw()
+    parameters["heartLogo"].draw()
+    press.draw()
+    parameters["win"].flip()
+    core.wait(1)
     waitInput(parameters)
 
     # Response instructions
@@ -886,6 +907,7 @@ def tutorial(parameters: dict):
         languageStyle=parameters['languageStyle'],
         wrapWidth=50
     )
+
     listenResponse.draw()
     press.draw()
     parameters["win"].flip()
@@ -905,7 +927,7 @@ def tutorial(parameters: dict):
             alpha,
             "Intero",
             feedback=True,
-            confidenceRating=False,
+            confidenceRating=False,nTrial=i
         )
 
     # If extero conditions required, show tutorial.
@@ -939,6 +961,12 @@ def tutorial(parameters: dict):
         parameters["win"].flip()
         core.wait(1)
 
+        # progress_slider.markerPos = nTrial
+
+
+        press.draw()
+        parameters["win"].flip()
+        core.wait(1)
         waitInput(parameters)
 
         # Run 10 training trials with feedback
@@ -947,13 +975,12 @@ def tutorial(parameters: dict):
             # Ramdom selection of condition
             condition = np.random.choice(["More", "Less"])
             alpha = -20.0 if condition == "Less" else 20.0
-
             _ = trial(
                 parameters,
                 alpha,
                 "Extero",
                 feedback=True,
-                confidenceRating=False,
+                confidenceRating=False,nTrial=i
             )
 
     ###################
@@ -976,13 +1003,14 @@ def tutorial(parameters: dict):
     task.setup().read(duration=2)
 
     # Run n training trials with confidence rating
-    for i in range(parameters["nConfidence"]):
+    prev_number_of_trails = parameters['nTrials']
+    parameters['nTrials'] = parameters["nConfidence"] #beacuase we dont want to give feedback and we want the slider to represent the amount
+    for i in range(parameters['nConfidence']):
         modality = "Intero"
         condition = np.random.choice(["More", "Less"])
         stim_intense = np.random.choice(np.array([1, 10, 30]))
         alpha = -stim_intense if condition == "Less" else stim_intense
-        _ = trial(parameters, alpha, modality, confidenceRating=True)
-
+        _ = trial(parameters, alpha, modality, confidenceRating=True,nTrial=i)
     # If extero conditions required, show tutorial.
     if parameters["ExteroCondition"] is True:
         # Run n training trials with confidence rating
@@ -995,8 +1023,9 @@ def tutorial(parameters: dict):
                 parameters,
                 alpha,
                 modality,
-                confidenceRating=True
+                confidenceRating=True,nTrial=i
             )
+    parameters['nTrials'] = prev_number_of_trails
 
     #################
     # End of tutorial
@@ -1024,6 +1053,7 @@ def tutorial(parameters: dict):
     )
     taskPresentation.draw()
     press.draw()
+
     parameters["win"].flip()
     core.wait(1)
     waitInput(parameters)
