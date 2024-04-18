@@ -203,7 +203,7 @@ def run(
             + "/"
             + parameters["participant"]
             + parameters["session"]
-            + ".csv",
+            + f"_trail_{nTrial}.csv",
             index=False,
         )
 
