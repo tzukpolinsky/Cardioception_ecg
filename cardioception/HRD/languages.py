@@ -125,7 +125,7 @@ Otherwise, you can continue to the main task."""
 
 
 def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection[str]]:
-    """Create the text dictionary with instruction in Danish
+    """Create the text dictionary with instruction in Hebrew
 
     Parameters
     ----------
