@@ -292,9 +292,8 @@ class BioHarnessTask(BioHarnessLslCreator):
                  local_time=None):
         super().__init__(address, port, timeout, modalities, stream_prefix, local_time)
         self.signals = {}
-        self.all_recording = []
+        self.recordings = []
         self.timestamps = []
-        self.recording = []
         self.channels = {"Channel_0": []}
         for mod in self.modalities:
             streams = pylsl.resolve_stream('type', mod)
@@ -302,16 +301,18 @@ class BioHarnessTask(BioHarnessLslCreator):
                 self.signals[mod] = pylsl.StreamInlet(streams[0])
 
     def read(self, duration, mod='ECG'):
-        self.recording = []
+        current_recordings = []
+        current_timestamps = []
         self.readInWaiting()  # clear the stack of lsl before reading
         start_time = time.time()
         while time.time() - start_time <= duration:
             samples, timestamps = self.signals[mod].pull_chunk()
-            self.timestamps = self.timestamps + timestamps
-            self.recording = self.recording + list(np.array(samples))
+            current_timestamps = current_timestamps + timestamps
+            current_recordings = current_recordings + list(np.array(samples))
             self.channels["Channel_0"].append(0)
-        self.all_recording = self.all_recording + self.recording
-        return self
+        self.recordings = self.recordings + current_recordings
+        self.timestamps = self.timestamps + current_timestamps
+        return current_recordings, current_timestamps
 
     def readInWaiting(self, mod='ECG'):
         self.signals[mod].pull_chunk()  # clear the stack of lsl before reading
@@ -319,7 +320,7 @@ class BioHarnessTask(BioHarnessLslCreator):
 
     def save(self, fname):
         saveList = np.array([np.array(self.all_recording).flatten(), np.array(self.timestamps).flatten()])
-        if fname.endswith(".txt"):
+        if fname.endswith(".csv"):
             colnames = ["signal", "time"]
             pd.DataFrame(saveList.T, columns=colnames).to_csv(
                 fname, index=False
@@ -332,15 +333,13 @@ class BioHarnessTask(BioHarnessLslCreator):
         return self
 
     def get_peaks(self, duration=5.0, sampling_rate=250):
-        signal = (
-            self.read(duration=duration).recording  # noqa
-        )
-        if len(signal) < sampling_rate*0.1:
+        signal, timestamps = self.read(duration=duration)
+        if len(signal) < sampling_rate * 0.1:
             print("empty signal")
             return [], np.array([])
         cleaned = nk.ecg_clean(signal, sampling_rate=sampling_rate, method="neurokit")
-        if len(cleaned.array) < sampling_rate*0.1:
+        if len(cleaned) < sampling_rate * 0.1:
             print("empty cleaned signal")
             return [], np.array([])
         signals, info = nk.ecg_peaks(cleaned, sampling_rate=sampling_rate, method="neurokit")
-        return signal, np.array(signals["ECG_R_Peaks"]).astype(bool)
+        return signal, np.array(signals["ECG_R_Peaks"]).astype(bool),timestamps

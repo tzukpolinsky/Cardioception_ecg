@@ -1,5 +1,5 @@
 # Author: Nicolas Legrand <nicolas.legrand@cas.au.dk>
-
+import json
 import pickle
 import time
 from typing import Optional, Tuple
@@ -31,11 +31,16 @@ def run(
 
     # Initialization of the Pulse Oximeter
     task.setup().read(duration=1)
-
+    subject_meta = {}
+    subject_meta['startTutorial'] = time.time()
     # Show tutorial and training trials
     if runTutorial is True:
         tutorial(parameters)
-
+    subject_meta['endTutorial'] = time.time()
+    subject_meta['durationTutorial'] = subject_meta['endTutorial'] - subject_meta['startTutorial']
+    nTrial_before_break = 0
+    subject_meta['startExp'] = time.time()
+    break_number = 1
     for nTrial, modality, trialType in zip(
             range(parameters["nTrials"]),
             parameters["Modality"],
@@ -198,12 +203,13 @@ def run(
             + "/"
             + parameters["participant"]
             + parameters["session"]
-            + ".txt",
+            + f"_trail_{nTrial}.csv",
             index=False,
         )
 
         # Breaks
         if (nTrial % parameters["nBreaking"] == 0) & (nTrial != 0):
+            subject_meta[f'startBreak{break_number}'] = time.time()
             message = visual.TextStim(
                 parameters["win"],
                 height=parameters["textSize"],
@@ -223,46 +229,47 @@ def run(
             remain.draw()
             message.draw()
             parameters["win"].flip()
-            task.save(
-                f"{parameters['resultPath']}/{parameters['participant']}_ppg_{nTrial}.txt"
-            )
-
+            signal_df = parameters['signal_df']
+            current_df = signal_df[(signal_df['nTrial'] <= nTrial) & (signal_df['nTrial'] >= nTrial_before_break)]
+            current_df['signal'] = current_df['signal'].apply(lambda x: x[0])
+            current_df.to_csv(
+                parameters["resultPath"] + "/" + parameters["participant"] + parameters[
+                    "session"] + f"signal_{nTrial_before_break}_{nTrial}.csv",
+                index=False)
+            nTrial_before_break = nTrial
             # Wait for participant input before continue
             waitInput(parameters)
-
+            subject_meta[f'endBreak{break_number}'] = time.time()
+            subject_meta[f'durationBreak{break_number}'] = subject_meta[f'endBreak{break_number}'] - subject_meta[f'startBreak{break_number}']
+            break_number += 1
             # Fixation cross
             fixation = visual.GratingStim(
                 win=parameters["win"], mask="cross", size=0.1, pos=[0, 0], sf=0
             )
             fixation.draw()
             parameters["win"].flip()
-
             # Reset recording when ready
             task.setup()
             task.read(duration=1)
-
+    subject_meta['endExp'] = time.time()
+    subject_meta['durationExp'] = subject_meta['endExp'] - subject_meta['startExp']
     # Save the final results
-    print("Saving final results in .txt file...")
+    print("Saving final results in .csv file...")
     parameters["results_df"].to_csv(
         parameters["resultPath"]
         + "/"
         + parameters["participant"]
         + parameters["session"]
-        + "_final.txt",
+        + "_final.csv",
         index=False,
     )
 
     # Save the final signals file
-    print("Saving PPG signal data frame...")
+    print("Saving signal data frame...")
     parameters["signal_df"]['signal'] = parameters["signal_df"]['signal'].apply(lambda x: x[0])
     parameters["signal_df"].to_csv(
-        parameters["resultPath"] + "/" + parameters["participant"] + "_signal.txt",
+        parameters["resultPath"] + "/" + parameters["participant"] + "_signal.csv",
         index=False,
-    )
-
-    # Save last pulse oximeter recording, if relevant
-    task.save(
-        f"{parameters['resultPath']}/{parameters['participant']}_ppg_{nTrial}_end.txt"
     )
 
     # Save posterios (if relevant)
@@ -294,7 +301,12 @@ def run(
             "wb",
     ) as handle:
         pickle.dump(save_parameter, handle, protocol=pickle.HIGHEST_PROTOCOL)
-
+    print("Saving times in json...")
+    with open(save_parameter["resultPath"]
+            + "/"
+            + save_parameter["participant"]
+            +'_times.json', 'w') as f:
+        json.dump(subject_meta, f)
     # End of the task
     end = visual.TextStim(
         parameters["win"],
@@ -307,6 +319,9 @@ def run(
     end.draw()
     parameters["win"].flip()
     core.wait(3)
+    print("done task")
+    parameters["win"].close()
+    core.quit()
 
 
 def trial(
@@ -415,7 +430,16 @@ def trial(
         print("User abort")
         parameters["win"].close()
         core.quit()
-
+    if nTrial != None:
+        progress_slider = visual.Slider(win=parameters['win'], name='progress',
+                                        ticks=(0, parameters["nTrials"] if not feedback else parameters["nFeedback"]),
+                                        granularity=0,
+                                        style='slider',
+                                        pos=(0.55, -0.45),
+                                        size=(0.2, 0.05),
+                                        color='LightGray', readOnly=True, startValue=nTrial)
+        # progress_slider.markerPos = nTrial
+        progress_slider.draw()
     if modality == "Intero":
 
         ###########
@@ -444,11 +468,11 @@ def trial(
 
         while True:
 
-            # Read the raw PPG signal from the pulse oximeter
+            # Read the raw signal from the device
             # You can adapt these line to work with a different setup provided that
             # it can measure and create the new variable `bpm` (the average beats per
             # minute over the 5 seconds of recording).
-            signal, peaks = task.get_peaks()
+            signal, peaks, timestamps = task.get_peaks()
 
             # Get actual heart Rate
             # Only use the last 5 seconds of the recording
@@ -644,14 +668,13 @@ def trial(
     task.channels["Channel_0"][-1] = 5
     endTrigger = time.time()
 
-    # Save PPG signal
+    # Save physio signal
     if nTrial is not None:  # Not during the tutorial
         if modality == "Intero":
-            this_df = None
-            # Save physio signal
             this_df = pd.DataFrame(
                 {
                     "signal": signal,
+                    "time": timestamps,
                     "nTrial": pd.Series([nTrial] * len(signal), dtype="category"),
                 }
             )
@@ -706,39 +729,7 @@ def waitInput(parameters: dict):
                 core.quit()
 
 
-def tutorial(parameters: dict):
-    """Run tutorial before task run.
-
-    Parameters
-    ----------
-    parameters : dict
-        Task parameters.
-
-    """
-
-    # Introduction
-    intro = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["Tutorial1"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=50
-    )
-    press = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        pos=(0.0, -0.4),
-        text=parameters["texts"]["textNext"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=50
-    )
-    intro.draw()
-    press.draw()
-    parameters["win"].flip()
-    core.wait(1)
-
-    waitInput(parameters)
-
+def pulse_tutorial(parameters: dict):
     # Pusle oximeter tutorial
     pulse1 = visual.TextStim(
         parameters["win"],
@@ -830,6 +821,43 @@ def tutorial(parameters: dict):
             core.wait(0.5)
             break
 
+
+def tutorial(parameters: dict):
+    """Run tutorial before task run.
+
+    Parameters
+    ----------
+    parameters : dict
+        Task parameters.
+
+    """
+
+    # Introduction
+    intro = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["Tutorial1"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
+    )
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        pos=(0.0, -0.4),
+        text=parameters["texts"]["textNext"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
+    )
+    intro.draw()
+    press.draw()
+    parameters["win"].flip()
+    core.wait(1)
+
+    waitInput(parameters)
+
+    if parameters["data_stream_device"] == 'oxi':
+        pulse_tutorial(parameters)
+
     # Heartrate recording
     recording = visual.TextStim(
         parameters["win"],
@@ -860,8 +888,28 @@ def tutorial(parameters: dict):
     listenIcon.draw()
     press.draw()
     parameters["win"].flip()
+    core.wait(5)
+    progress_bar = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["Tutorial7"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50,
+        pos=(0.0, -0.3)
+    )
+    progress_bar.draw()
+    progress_slider = visual.Slider(win=parameters['win'], name='progress',
+                                    ticks=(0, 10),
+                                    granularity=0,
+                                    style='slider',
+                                    pos=(0.55, -0.45),
+                                    size=(0.2, 0.05),
+                                    color='LightGray', readOnly=True, startValue=4)
+    progress_slider.draw()
+    parameters["heartLogo"].draw()
+    press.draw()
+    parameters["win"].flip()
     core.wait(1)
-
     waitInput(parameters)
 
     # Response instructions
@@ -873,6 +921,7 @@ def tutorial(parameters: dict):
         languageStyle=parameters['languageStyle'],
         wrapWidth=50
     )
+
     listenResponse.draw()
     press.draw()
     parameters["win"].flip()
@@ -892,7 +941,7 @@ def tutorial(parameters: dict):
             alpha,
             "Intero",
             feedback=True,
-            confidenceRating=False,
+            confidenceRating=False, nTrial=i
         )
 
     # If extero conditions required, show tutorial.
@@ -926,6 +975,11 @@ def tutorial(parameters: dict):
         parameters["win"].flip()
         core.wait(1)
 
+        # progress_slider.markerPos = nTrial
+
+        press.draw()
+        parameters["win"].flip()
+        core.wait(1)
         waitInput(parameters)
 
         # Run 10 training trials with feedback
@@ -934,13 +988,12 @@ def tutorial(parameters: dict):
             # Ramdom selection of condition
             condition = np.random.choice(["More", "Less"])
             alpha = -20.0 if condition == "Less" else 20.0
-
             _ = trial(
                 parameters,
                 alpha,
                 "Extero",
                 feedback=True,
-                confidenceRating=False,
+                confidenceRating=False, nTrial=i
             )
 
     ###################
@@ -963,13 +1016,15 @@ def tutorial(parameters: dict):
     task.setup().read(duration=2)
 
     # Run n training trials with confidence rating
-    for i in range(parameters["nConfidence"]):
+    prev_number_of_trails = parameters['nTrials']
+    parameters['nTrials'] = parameters[
+        "nConfidence"]  # beacuase we dont want to give feedback and we want the slider to represent the amount
+    for i in range(parameters['nConfidence']):
         modality = "Intero"
         condition = np.random.choice(["More", "Less"])
         stim_intense = np.random.choice(np.array([1, 10, 30]))
         alpha = -stim_intense if condition == "Less" else stim_intense
-        _ = trial(parameters, alpha, modality, confidenceRating=True)
-
+        _ = trial(parameters, alpha, modality, confidenceRating=True, nTrial=i)
     # If extero conditions required, show tutorial.
     if parameters["ExteroCondition"] is True:
         # Run n training trials with confidence rating
@@ -982,8 +1037,9 @@ def tutorial(parameters: dict):
                 parameters,
                 alpha,
                 modality,
-                confidenceRating=True,
+                confidenceRating=True, nTrial=i
             )
+    parameters['nTrials'] = prev_number_of_trails
 
     #################
     # End of tutorial
@@ -1011,6 +1067,7 @@ def tutorial(parameters: dict):
     )
     taskPresentation.draw()
     press.draw()
+
     parameters["win"].flip()
     core.wait(1)
     waitInput(parameters)
@@ -1078,8 +1135,9 @@ def responseDecision(
             decision, decisionRT = None, None
             # Record participant response (+/-)
             message = visual.TextStim(
-                parameters["win"], height=parameters["textSize"], text=parameters["texts"]["textTooLate"],languageStyle=parameters['languageStyle'],
-        wrapWidth=50
+                parameters["win"], height=parameters["textSize"], text=parameters["texts"]["textTooLate"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=50
             )
             message.draw()
             parameters["win"].flip()
@@ -1094,35 +1152,6 @@ def responseDecision(
                 decision = 'More'
             # Read oximeter
             task.readInWaiting()
-
-            # Feedback
-            if feedback is True:
-                # Is the answer Correct?
-                isCorrect = decision == condition
-                if isCorrect is False:
-                    acc = visual.TextStim(
-                        parameters["win"],
-                        height=parameters["textSize"],
-                        color="red",
-                        text="False",
-                        languageStyle=parameters['languageStyle'],
-                        wrapWidth=50
-                    )
-                    acc.draw()
-                    parameters["win"].flip()
-                    core.wait(0.5)
-                elif isCorrect is True:
-                    acc = visual.TextStim(
-                        parameters["win"],
-                        height=parameters["textSize"],
-                        color="green",
-                        text="Correct",
-                        languageStyle=parameters['languageStyle'],
-                        wrapWidth=50
-                    )
-                    acc.draw()
-                    parameters["win"].flip()
-                    core.wait(0.5)
 
     if parameters["device"] == "mouse":
 
@@ -1208,29 +1237,27 @@ def responseDecision(
             message.draw()
             parameters["win"].flip()
             core.wait(0.5)
-        else:
-            # Is the answer Correct?
-            isCorrect = decision == condition
-            # Feedback
-            if feedback is True:
-                if isCorrect == 0:
-                    textFeedback = parameters["texts"]["incorrectResponse"]
-                else:
-                    textFeedback = parameters["texts"]["correctResponse"]
-                colorFeedback = "red" if isCorrect == 0 else "green"
-                acc = visual.TextStim(
-                    parameters["win"],
-                    height=parameters["textSize"],
-                    pos=(0.0, -0.2),
-                    color=colorFeedback,
-                    text=textFeedback,
-                    languageStyle=parameters['languageStyle'],
-                    wrapWidth=50
-                )
-                acc.draw()
-                parameters["win"].flip()
-                core.wait(1)
 
+    isCorrect = decision == condition
+    # Feedback
+    if feedback is True:
+        if isCorrect:
+            textFeedback = parameters["texts"]["correctResponse"]
+        else:
+            textFeedback = parameters["texts"]["incorrectResponse"]
+        colorFeedback = "green" if isCorrect else "red"
+        acc = visual.TextStim(
+            parameters["win"],
+            height=parameters["textSize"],
+            pos=(0.0, -0.2),
+            color=colorFeedback,
+            text=textFeedback,
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
+        )
+        acc.draw()
+        parameters["win"].flip()
+        core.wait(1)
     return (
         responseMadeTrigger,
         responseTrigger,
@@ -1260,16 +1287,17 @@ def confidenceRatingTask(
 
     if parameters["device"] == "keyboard":
 
-        markerStart = np.random.choice(
-            np.arange(parameters["confScale"][0], parameters["confScale"][1])
-        )
+        # markerStart = np.random.choice(
+        #     np.arange(parameters["confScale"][0], parameters["confScale"][1])
+        # )
+        markerStart = (parameters["confScale"][0] + parameters["confScale"][1]) // 2
         ratingScale = visual.RatingScale(
             parameters["win"],
             low=parameters["confScale"][0],
             high=parameters["confScale"][1],
             noMouse=True,
             labels=parameters["labelsRating"],
-            acceptKeys="down",
+            acceptKeys="space",
             markerStart=markerStart,
         )
 
@@ -1319,15 +1347,18 @@ def confidenceRatingTask(
             name="slider",
             pos=(0, -0.2),
             size=(0.7, 0.1),
-            labels=parameters["texts"]["VASlabels"],
             granularity=1,
             ticks=(0, 100),
-            style=("rating"),
+            style="rating",
             color="LightGray",
-            flip=False,
-            labelHeight=0.1 * 0.6,
+            flip=False, startValue=50
 
         )
+        text_labels = [
+            visual.TextStim(parameters["win"], text=label, pos=pos, languageStyle=parameters['languageStyle'],
+                            wrapWidth=50, height=parameters["textSize"]) for label, pos in
+            zip(parameters["texts"]["VASlabels"], [(-0.35, -0.3), (0.35, -0.3)])]
+
         slider.marker.size = (0.03, 0.03)
         clock = core.Clock()
         parameters["myMouse"].clickReset()
@@ -1338,7 +1369,7 @@ def confidenceRatingTask(
             trialdur = clock.getTime()
             buttons, confidenceRT = parameters["myMouse"].getPressed(getTime=True)
 
-            # Mouse position (keep in in the rectangle)
+            # Mouse position (keep in the rectangle)
             newPos = parameters["myMouse"].getPos()
             if newPos[0] < -0.5:
                 newX = -0.5
@@ -1371,6 +1402,8 @@ def confidenceRatingTask(
                 )
                 # Change marker color after response provided
                 slider.marker.color = "green"
+                for label in text_labels:
+                    label.draw()
                 slider.draw()
                 message.draw()
                 parameters["win"].flip()
@@ -1394,6 +1427,8 @@ def confidenceRatingTask(
                 parameters["win"].flip()
                 core.wait(0.5)
                 break
+            for label in text_labels:
+                label.draw()
             slider.draw()
             message.draw()
             parameters["win"].flip()

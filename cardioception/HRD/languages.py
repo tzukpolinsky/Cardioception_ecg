@@ -144,7 +144,7 @@ def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection
 
     btnext = "לחצו רווח" if device == "keyboard" else "לחצו על העכבר"
     texts = {
-        "done": "סיימת את המטלה. תודל על השתתפותך!",
+        "done": "סיימת את המטלה. תודה על השתתפותך!",
         "slower": "אטי",
         "faster": "מהיר",
         "checkOximeter": "צריך לוודא כי האלקטרודות מונחות היטב",
@@ -157,8 +157,8 @@ def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection
         "textToneListening": "להקשיב לצלילים",
         "textTaskStart": "המטלה עומדת להתחיל",
         "textTooLate": "מאוחר מדי",
-        "textBreaks": f"הפסקה. ניתן לנוח כמידת הצורך.\n {btnext}כשרוצים לחזור למטלה.",
-        "textNext": f"בבקשה {btnext} להמשך ",
+        "textBreaks": f" הפסקה. ניתן לנוח כמידת הצורך.\n {btnext}כשרוצים לחזור למטלה.",
+        "textNext": f" בבקשה {btnext} להמשך ",
         "textWaitTrigger": "Waiting for fMRI trigger...",
         "Decision": {
             "Intero": """האם הצלילים מהירים או אטיים מהדופק?""",
@@ -205,13 +205,22 @@ def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection
 
 הצלילים בסדרה השניה תמיד יהיו מהירים או אטיים מהדופק. במידה ולא בטוחים, צריך לנחש.
 """
-    texts[
-        "Tutorial4"
-    ] = """לאחר כל ההחלטה, תוצג שאלה על רמת הטחון שלך לגבי התשובה שספקת.
-בחלק זה, הציון הגבוה ביותר (100) אומר בטחון מוחלט והציון הנמוך ביותר (0) אומר ניחוש מוחלט.
+    if device == "mouse":
+        texts[
+            "Tutorial4"
+        ] = """לאחר כל ההחלטה, תוצג שאלה על רמת הבטחון שלך לגבי התשובה שספקת.
+    בחלק זה, הציון הגבוה ביותר (100) אומר בטחון מוחלט והציון הנמוך ביותר (0) אומר ניחוש מוחלט.
+    
+    יש להשתמש בעכבר כדי למקם את תשובתך על הסקאלה
+    """
+    elif device=='keyboard':
+        texts[
+            "Tutorial4"
+        ] = """לאחר כל ההחלטה, תוצג שאלה על רמת הבטחון שלך לגבי התשובה שספקת.
+            בחלק זה, הציון הגבוה ביותר (10) אומר בטחון מוחלט והציון הנמוך ביותר (0) אומר ניחוש מוחלט.
 
-יש להשתמש בעכבר כדי למקם את תשובתך על הסקאלה
-"""
+             יש להשתמש להקיש ימינה ושמאלה כדי למקם את תשובתך על הסקאלה ולסיום להקיש רווח
+            """
 
     texts[
         "Tutorial5"
@@ -226,6 +235,10 @@ def hebrew(device: str, setup: str, exteroception: bool) -> Dict[str, Collection
     texts[
         "Tutorial6"
     ] = """ההדרכה הסתיימה. אם ישנן שאלות נוספות, זה הזמן לשאול את הנסיין. במידה ואין שאלות, ניתן להתחיל את המטלה"""
+    texts[
+        "Tutorial7"
+    ] = """לאורך המטלה יוצג מצד ימין למטה של המסך,
+בר התקדמות המייצג את אחוז ההתקדמות במטלה."""
     return texts
 
 def danish(device: str, setup: str, exteroception: bool) -> Dict[str, Collection[str]]:
