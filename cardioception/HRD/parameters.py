@@ -56,7 +56,7 @@ def getParameters(
         language: str = "english",
         systole_kw: dict = {},
         address='',
-        maxRatingTime=5, respMax=5, nFeedback=5
+        maxRatingTime=5, respMax=5, nFeedback=5,nConfidence=5
 ):
     """Create Heart Rate Discrimination task parameters.
 
@@ -239,7 +239,7 @@ def getParameters(
     parameters["screenNb"] = screenNb
     parameters["monitor"] = "testMonitor"
     parameters["nFeedback"] = nFeedback
-    parameters["nConfidence"] = 8
+    parameters["nConfidence"] = nConfidence
     parameters["respMax"] = respMax
     parameters["minRatingTime"] = 0.5
     parameters["maxRatingTime"] = maxRatingTime

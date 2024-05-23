@@ -889,6 +889,7 @@ def tutorial(parameters: dict):
     press.draw()
     parameters["win"].flip()
     core.wait(5)
+    waitInput(parameters)
     progress_bar = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
@@ -897,7 +898,6 @@ def tutorial(parameters: dict):
         wrapWidth=50,
         pos=(0.0, -0.3)
     )
-    progress_bar.draw()
     progress_slider = visual.Slider(win=parameters['win'], name='progress',
                                     ticks=(0, 10),
                                     granularity=0,
@@ -905,6 +905,7 @@ def tutorial(parameters: dict):
                                     pos=(0.55, -0.45),
                                     size=(0.2, 0.05),
                                     color='LightGray', readOnly=True, startValue=4)
+    progress_bar.draw()
     progress_slider.draw()
     parameters["heartLogo"].draw()
     press.draw()
