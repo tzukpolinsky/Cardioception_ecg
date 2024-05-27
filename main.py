@@ -18,7 +18,7 @@ if __name__ == "__main__":
         'number of confidence trials': 2,
         'user device': ['keyboard', 'mouse'],
         'recording device': 'zephyr',
-        'device bluetooth address': ['','58:93:D8:4A:6A:08'],
+        'device bluetooth address': ['58:93:D8:4A:2C:81','A0:E6:F8:FA:98:7A','58:93:D8:4A:6A:08'],
         'date': data.getDateStr(),
         'samples per second': 250,
         'language': ['hebrew', 'english'],
