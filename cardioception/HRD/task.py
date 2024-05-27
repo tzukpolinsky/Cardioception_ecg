@@ -240,7 +240,8 @@ def run(
             # Wait for participant input before continue
             waitInput(parameters)
             subject_meta[f'endBreak{break_number}'] = time.time()
-            subject_meta[f'durationBreak{break_number}'] = subject_meta[f'endBreak{break_number}'] - subject_meta[f'startBreak{break_number}']
+            subject_meta[f'durationBreak{break_number}'] = subject_meta[f'endBreak{break_number}'] - subject_meta[
+                f'startBreak{break_number}']
             break_number += 1
             # Fixation cross
             fixation = visual.GratingStim(
@@ -303,9 +304,9 @@ def run(
         pickle.dump(save_parameter, handle, protocol=pickle.HIGHEST_PROTOCOL)
     print("Saving times in json...")
     with open(save_parameter["resultPath"]
-            + "/"
-            + save_parameter["participant"]
-            +'_times.json', 'w') as f:
+              + "/"
+              + save_parameter["participant"]
+              + '_times.json', 'w') as f:
         json.dump(subject_meta, f)
     # End of the task
     end = visual.TextStim(
@@ -330,7 +331,7 @@ def trial(
         modality: str,
         confidenceRating: bool = True,
         feedback: bool = False,
-        nTrial: Optional[int] = None,
+        nTrial: Optional[int] = None, tutorial=False
 ) -> Tuple[
     str,
     float,
@@ -430,16 +431,6 @@ def trial(
         print("User abort")
         parameters["win"].close()
         core.quit()
-    if nTrial != None:
-        progress_slider = visual.Slider(win=parameters['win'], name='progress',
-                                        ticks=(0, parameters["nTrials"] if not feedback else parameters["nFeedback"]),
-                                        granularity=0,
-                                        style='slider',
-                                        pos=(0.55, -0.45),
-                                        size=(0.2, 0.05),
-                                        color='LightGray', readOnly=True, startValue=nTrial)
-        # progress_slider.markerPos = nTrial
-        progress_slider.draw()
     if modality == "Intero":
 
         ###########
@@ -596,25 +587,26 @@ def trial(
     else:
         raise ValueError("Invalid modality provided")
     # Record participant response (+/-)
-    message = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        pos=(0, 0.4),
-        text=parameters["texts"]["Decision"][modality],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=50
-    )
-    message.autoDraw = True
+    if tutorial:
+        message = visual.TextStim(
+            parameters["win"],
+            height=parameters["textSize"],
+            pos=(0, 0.4),
+            text=parameters["texts"]["Decision"][modality],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
+        )
+        message.autoDraw = True
 
-    press = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["responseText"],
-        pos=(0.0, -0.4),
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=50
-    )
-    press.autoDraw = True
+        press = visual.TextStim(
+            parameters["win"],
+            height=parameters["textSize"],
+            text=parameters["texts"]["responseText"],
+            pos=(0.0, -0.4),
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=50
+        )
+        press.autoDraw = True
 
     # Sound trigger
     task.readInWaiting()
@@ -633,8 +625,9 @@ def trial(
         decisionRT,
         isCorrect,
     ) = responseDecision(responseSound, parameters, feedback, condition)
-    press.autoDraw = False
-    message.autoDraw = False
+    if tutorial:
+        press.autoDraw = False
+        message.autoDraw = False
     if modality == "Intero":
         parameters["heartLogo"].autoDraw = False
     elif modality == "Extero":
@@ -890,45 +883,23 @@ def tutorial(parameters: dict):
     parameters["win"].flip()
     core.wait(5)
     waitInput(parameters)
-    progress_bar = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["Tutorial7"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=50,
-        pos=(0.0, -0.3)
-    )
-    progress_slider = visual.Slider(win=parameters['win'], name='progress',
-                                    ticks=(0, 10),
-                                    granularity=0,
-                                    style='slider',
-                                    pos=(0.55, -0.45),
-                                    size=(0.2, 0.05),
-                                    color='LightGray', readOnly=True, startValue=4)
-    progress_bar.draw()
-    progress_slider.draw()
-    parameters["heartLogo"].draw()
-    press.draw()
-    parameters["win"].flip()
-    core.wait(1)
-    waitInput(parameters)
 
     # Response instructions
-    listenResponse = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        pos=(0.0, 0.0),
-        text=parameters["texts"]["Tutorial3_responses"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=50
-    )
-
-    listenResponse.draw()
-    press.draw()
-    parameters["win"].flip()
-    core.wait(1)
-
-    waitInput(parameters)
+    # listenResponse = visual.TextStim(
+    #     parameters["win"],
+    #     height=parameters["textSize"],
+    #     pos=(0.0, 0.0),
+    #     text=parameters["texts"]["Tutorial3_responses"],
+    #     languageStyle=parameters['languageStyle'],
+    #     wrapWidth=50
+    # )
+    #
+    # listenResponse.draw()
+    # press.draw()
+    # parameters["win"].flip()
+    # core.wait(1)
+    #
+    # waitInput(parameters)
     task = parameters[parameters["data_stream_device"] + "Task"]
     # Run training trials with feedback
     task.setup().read(duration=2)
@@ -941,7 +912,7 @@ def tutorial(parameters: dict):
             parameters,
             alpha,
             "Intero",
-            feedback=True,
+            feedback=True, tutorial=True,
             confidenceRating=False, nTrial=i
         )
 
@@ -975,12 +946,6 @@ def tutorial(parameters: dict):
         press.draw()
         parameters["win"].flip()
         core.wait(1)
-
-        # progress_slider.markerPos = nTrial
-
-        press.draw()
-        parameters["win"].flip()
-        core.wait(1)
         waitInput(parameters)
 
         # Run 10 training trials with feedback
@@ -993,7 +958,7 @@ def tutorial(parameters: dict):
                 parameters,
                 alpha,
                 "Extero",
-                feedback=True,
+                feedback=True, tutorial=True,
                 confidenceRating=False, nTrial=i
             )
 
@@ -1025,7 +990,7 @@ def tutorial(parameters: dict):
         condition = np.random.choice(["More", "Less"])
         stim_intense = np.random.choice(np.array([1, 10, 30]))
         alpha = -stim_intense if condition == "Less" else stim_intense
-        _ = trial(parameters, alpha, modality, confidenceRating=True, nTrial=i)
+        _ = trial(parameters, alpha, modality, confidenceRating=True, tutorial=True, nTrial=i)
     # If extero conditions required, show tutorial.
     if parameters["ExteroCondition"] is True:
         # Run n training trials with confidence rating
@@ -1037,7 +1002,7 @@ def tutorial(parameters: dict):
             _ = trial(
                 parameters,
                 alpha,
-                modality,
+                modality, tutorial=True,
                 confidenceRating=True, nTrial=i
             )
     parameters['nTrials'] = prev_number_of_trails
@@ -1136,7 +1101,7 @@ def responseDecision(
             decision, decisionRT = None, None
             # Record participant response (+/-)
             message = visual.TextStim(
-                parameters["win"], height=parameters["textSize"], text=parameters["texts"]["textTooLate"],
+                parameters["win"], height=parameters["textSize"], text=parameters["texts"]["tooLate"], pos=(0, -0.2),
                 languageStyle=parameters['languageStyle'],
                 wrapWidth=50
             )
@@ -1237,7 +1202,7 @@ def responseDecision(
             )
             message.draw()
             parameters["win"].flip()
-            core.wait(0.5)
+            core.wait(1)
 
     isCorrect = decision == condition
     # Feedback
@@ -1300,6 +1265,8 @@ def confidenceRatingTask(
             labels=parameters["labelsRating"],
             acceptKeys="space",
             markerStart=markerStart,
+            # languageStyle=parameters['languageStyle'],
+
         )
 
         message = visual.TextStim(

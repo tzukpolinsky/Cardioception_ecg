@@ -235,7 +235,10 @@ def getParameters(
     parameters["device"] = device
     if parameters["device"] == "keyboard":
         parameters["confScale"] = [1, 7]
-    parameters["labelsRating"] = ["Guess", "Certain"]
+    if language == 'hebrew':
+        parameters["labelsRating"] = ["שחנמ", "חוטב"]
+    else:
+        parameters["labelsRating"] = ["Guess", "Certain"]
     parameters["screenNb"] = screenNb
     parameters["monitor"] = "testMonitor"
     parameters["nFeedback"] = nFeedback
