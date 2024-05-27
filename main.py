@@ -18,9 +18,9 @@ if __name__ == "__main__":
         'number of confidence trials': 2,
         'user device': ['keyboard', 'mouse'],
         'recording device': 'zephyr',
-        'device bluetooth address': ['58:93:D8:4A:6A:08'],
+        'device bluetooth address': ['','58:93:D8:4A:6A:08'],
         'date': data.getDateStr(),
-        'samples per seconds': 250,
+        'samples per second': 250,
         'language': ['hebrew', 'english'],
         "save folder": os.path.join(os.getcwd(), 'data'),
         "full screen": True,
@@ -38,7 +38,6 @@ if __name__ == "__main__":
     # Set global task parameters
     participant_name = subject_info['Subject Number']
     session = subject_info['Session']
-    device = subject_info['device']
     parameters = getParameters(language=subject_info['language'],
                                participant=participant_name, session=session, serialPort=None,
                                fullscr=subject_info['full screen'],
