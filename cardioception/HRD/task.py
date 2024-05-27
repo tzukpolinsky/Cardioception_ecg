@@ -1262,6 +1262,7 @@ def confidenceRatingTask(
             low=parameters["confScale"][0],
             high=parameters["confScale"][1],
             noMouse=True,
+            scale=None, showValue=False,
             labels=parameters["labelsRating"],
             acceptKeys="space",
             markerStart=markerStart,
