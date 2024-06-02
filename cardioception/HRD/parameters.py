@@ -489,7 +489,7 @@ def getParameters(
     parameters["textSize"] = 0.04
     parameters["HRcutOff"] = [40, 120]
     if parameters["device"] == "keyboard":
-        parameters["confScale"] = [1, 10]
+        parameters["confScale"] = [1, 7]
     elif parameters["device"] == "mouse":
         parameters["myMouse"] = event.Mouse()
 

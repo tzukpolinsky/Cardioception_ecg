@@ -297,4 +297,4 @@ def run_hrd_report(result_path: str,sfreq:int,output_folder:str):
 
 
 if __name__ == '__main__':
-    run_hrd_report("C:\\Users\\rsolomon\\data\\safeHeart\\intreospection\\results\\",250,"C:\\Users\\rsolomon\\data\\safeHeart\\intreospection\\results\\")
+    run_hrd_report("C:\\Users\\User\\Interoception\\Cardioception_ecg\\results\\2024-05-30_15h09.07.778",250,"C:\\Users\\User\\Interoception\\Cardioception_ecg\\results\\2024-05-30_15h09.07.778")
