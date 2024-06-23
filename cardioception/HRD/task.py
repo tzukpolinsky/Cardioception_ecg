@@ -14,7 +14,7 @@ def run(
         parameters: dict,
         confidenceRating: bool = True,
         runTutorial: bool = False,
-):
+)->bool:
     """Run the Heart Rate Discrimination task.
 
     Parameters
@@ -26,6 +26,10 @@ def run(
     runTutorial : bool
         If `True`, will present a tutorial with 10 training trial with feedback
         and 5 trials with confidence rating.
+    Returns
+    -------
+    userAborted: bool
+    `True` if the user aborted the task
     """
     task = parameters[parameters["data_stream_device"] + "Task"]
 
@@ -35,7 +39,8 @@ def run(
     subject_meta['startTutorial'] = time.time()
     # Show tutorial and training trials
     if runTutorial is True:
-        tutorial(parameters)
+        if tutorial(parameters):
+            return True
     subject_meta['endTutorial'] = time.time()
     subject_meta['durationTutorial'] = subject_meta['endTutorial'] - subject_meta['startTutorial']
     nTrial_before_break = 0
@@ -119,7 +124,7 @@ def run(
             responseMadeTrigger,
             ratingStartTrigger,
             ratingEndTrigger,
-            endTrigger,
+            endTrigger, userAborted
         ) = trial(
             parameters,
             alpha,
@@ -127,7 +132,8 @@ def run(
             confidenceRating=confidenceRating,
             nTrial=nTrial,
         )
-
+        if userAborted:
+            return True
         # Check if response is 'More' or 'Less'
         isMore = 1 if decision == "More" else 0
         # Update the UpDown staircase if initialization trial
@@ -323,6 +329,16 @@ def run(
     print("done task")
     parameters["win"].close()
     core.quit()
+    return False
+
+def check_if_user_aborted(parameters: dict):
+    keys = event.getKeys()
+    if "escape" in keys:
+        print("User abort")
+        parameters["win"].close()
+        core.quit()
+        return True
+    return False
 
 
 def trial(
@@ -349,7 +365,7 @@ def trial(
     float,
     Optional[float],
     Optional[float],
-    float,
+    float,bool
 ]:
     """Run one trial of the Heart Rate Discrimination task.
 
@@ -407,6 +423,8 @@ def trial(
     startTrigger, soundTrigger, responseMadeTrigger, ratingStartTrigger,\
         ratingEndTrigger, endTrigger : float
         Time stamp of key timepoints inside the trial.
+    userAborted: bool
+        `True` if the user pressed escape key during the trial
     """
 
     # Print infos at each trial start
@@ -426,11 +444,8 @@ def trial(
     parameters["win"].flip()
     core.wait(np.random.uniform(parameters["isi"][0], parameters["isi"][1]))
 
-    keys = event.getKeys()
-    if "escape" in keys:
-        print("User abort")
-        parameters["win"].close()
-        core.quit()
+    if check_if_user_aborted(parameters):
+        return ("", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True)
     if modality == "Intero":
 
         ###########
@@ -452,7 +467,8 @@ def trial(
 
         parameters["heartLogo"].draw()
         parameters["win"].flip()
-
+        if check_if_user_aborted(parameters):
+            return ("", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True)
         startTrigger = time.time()
 
         # Recording
@@ -484,7 +500,8 @@ def trial(
                 message.draw()
                 parameters["win"].flip()
                 core.wait(2)
-
+                if check_if_user_aborted(parameters):
+                    return ("", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True)
             else:
                 # Check for extreme heart rate values, if crosses theshold,
                 # hold the task until resolved. Cutoff values determined in
@@ -507,6 +524,8 @@ def trial(
                     message.draw()
                     parameters["win"].flip()
                     core.wait(2)
+                    if check_if_user_aborted(parameters):
+                        return ("", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True)
 
     elif modality == "Extero":
 
@@ -546,7 +565,8 @@ def trial(
         listenSound.play()
         core.wait(5)
         listenSound.stop()
-
+        if check_if_user_aborted(parameters):
+            return ("", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True)
     else:
         raise ValueError("Invalid modality")
 
@@ -557,7 +577,8 @@ def trial(
     fixation.draw()
     parameters["win"].flip()
     core.wait(0.5)
-
+    if check_if_user_aborted(parameters):
+        return ("", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True)
     #######
     # Sound
     #######
@@ -577,7 +598,8 @@ def trial(
         "cardioception.HRD", f"Sounds/{responseBPM}.wav"
     )
     print(f"...loading file (Response): {responseFile}")
-
+    if check_if_user_aborted(parameters):
+        return ("", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True)
     # Play selected BPM frequency
     responseSound = sound.Sound(responseFile)
     if modality == "Intero":
@@ -613,7 +635,8 @@ def trial(
     task.channels["Channel_0"][-1] = 3
     soundTrigger = time.time()
     parameters["win"].flip()
-
+    if check_if_user_aborted(parameters):
+        return ("", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True)
     #####################
     # Esimation Responses
     #####################
@@ -623,8 +646,10 @@ def trial(
         respProvided,
         decision,
         decisionRT,
-        isCorrect,
+        isCorrect, userAborted
     ) = responseDecision(responseSound, parameters, feedback, condition)
+    if userAborted:
+        return ("", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True)
     if tutorial:
         press.autoDraw = False
         message.autoDraw = False
@@ -651,11 +676,12 @@ def trial(
             confidence,
             confidenceRT,
             ratingProvided,
-            ratingEndTrigger,
+            ratingEndTrigger,userAborted
         ) = confidenceRatingTask(parameters)
     else:
         ratingStartTrigger, ratingEndTrigger = None, None
-
+    if userAborted:
+        return ("", 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, True)
     # Confidence rating end trigger
     task.readInWaiting()
     task.channels["Channel_0"][-1] = 5
@@ -693,7 +719,7 @@ def trial(
         responseMadeTrigger,
         ratingStartTrigger,
         ratingEndTrigger,
-        endTrigger,
+        endTrigger,False
     )
 
 
@@ -908,13 +934,33 @@ def tutorial(parameters: dict):
         condition = np.random.choice(["More", "Less"])
         alpha = -20.0 if condition == "Less" else 20.0
 
-        _ = trial(
+        (
+            condition,
+            listenBPM,
+            responseBPM,
+            decision,
+            decisionRT,
+            confidence,
+            confidenceRT,
+            alpha,
+            isCorrect,
+            respProvided,
+            ratingProvided,
+            startTrigger,
+            soundTrigger,
+            responseMadeTrigger,
+            ratingStartTrigger,
+            ratingEndTrigger,
+            endTrigger, userAborted
+        ) = trial(
             parameters,
             alpha,
             "Intero",
             feedback=True, tutorial=True,
             confidenceRating=False, nTrial=i
         )
+        if userAborted:
+            return True
 
     # If extero conditions required, show tutorial.
     if parameters["ExteroCondition"] is True:
@@ -954,14 +1000,33 @@ def tutorial(parameters: dict):
             # Ramdom selection of condition
             condition = np.random.choice(["More", "Less"])
             alpha = -20.0 if condition == "Less" else 20.0
-            _ = trial(
+            (
+                condition,
+                listenBPM,
+                responseBPM,
+                decision,
+                decisionRT,
+                confidence,
+                confidenceRT,
+                alpha,
+                isCorrect,
+                respProvided,
+                ratingProvided,
+                startTrigger,
+                soundTrigger,
+                responseMadeTrigger,
+                ratingStartTrigger,
+                ratingEndTrigger,
+                endTrigger, userAborted
+            ) = trial(
                 parameters,
                 alpha,
                 "Extero",
                 feedback=True, tutorial=True,
                 confidenceRating=False, nTrial=i
             )
-
+            if userAborted:
+                return True
     ###################
     # Confidence rating
     ###################
@@ -990,7 +1055,27 @@ def tutorial(parameters: dict):
         condition = np.random.choice(["More", "Less"])
         stim_intense = np.random.choice(np.array([1, 10, 30]))
         alpha = -stim_intense if condition == "Less" else stim_intense
-        _ = trial(parameters, alpha, modality, confidenceRating=True, tutorial=True, nTrial=i)
+        (
+            condition,
+            listenBPM,
+            responseBPM,
+            decision,
+            decisionRT,
+            confidence,
+            confidenceRT,
+            alpha,
+            isCorrect,
+            respProvided,
+            ratingProvided,
+            startTrigger,
+            soundTrigger,
+            responseMadeTrigger,
+            ratingStartTrigger,
+            ratingEndTrigger,
+            endTrigger, userAborted
+        ) = trial(parameters, alpha, modality, confidenceRating=True, tutorial=True, nTrial=i)
+        if userAborted:
+            return True
     # If extero conditions required, show tutorial.
     if parameters["ExteroCondition"] is True:
         # Run n training trials with confidence rating
@@ -999,12 +1084,32 @@ def tutorial(parameters: dict):
             condition = np.random.choice(["More", "Less"])
             stim_intense = np.random.choice(np.array([1, 10, 30]))
             alpha = -stim_intense if condition == "Less" else stim_intense
-            _ = trial(
+            (
+                condition,
+                listenBPM,
+                responseBPM,
+                decision,
+                decisionRT,
+                confidence,
+                confidenceRT,
+                alpha,
+                isCorrect,
+                respProvided,
+                ratingProvided,
+                startTrigger,
+                soundTrigger,
+                responseMadeTrigger,
+                ratingStartTrigger,
+                ratingEndTrigger,
+                endTrigger, userAborted
+            ) = trial(
                 parameters,
                 alpha,
                 modality, tutorial=True,
                 confidenceRating=True, nTrial=i
             )
+            if userAborted:
+                return True
     parameters['nTrials'] = prev_number_of_trails
 
     #################
@@ -1037,7 +1142,7 @@ def tutorial(parameters: dict):
     parameters["win"].flip()
     core.wait(1)
     waitInput(parameters)
-
+    return False
 
 def responseDecision(
         this_hr,
@@ -1045,7 +1150,7 @@ def responseDecision(
         feedback: bool,
         condition: str,
 ) -> Tuple[
-    float, Optional[float], bool, Optional[str], Optional[float], Optional[bool]
+    float, Optional[float], bool, Optional[str], Optional[float], Optional[bool], bool
 ]:
     """Recording response during the decision phase.
 
@@ -1075,14 +1180,16 @@ def responseDecision(
         Decision response time (seconds).
     isCorrect : bool or None
         `True` if the response provided was correct, `False` otherwise.
-
+    userAborted: bool
+        `True` if the user pressed escape key
     """
 
     print("...starting decision phase.")
     task = parameters[parameters["data_stream_device"] + "Task"]
     decision, decisionRT, isCorrect = None, None, None
     responseTrigger = time.time()
-
+    if check_if_user_aborted(parameters):
+        return (0, 0, 0, 0, 0, 0, True)
     if parameters["device"] == "keyboard":
         this_hr.play()
         clock = core.Clock()
@@ -1092,7 +1199,8 @@ def responseDecision(
             timeStamped=clock,
         )
         this_hr.stop()
-
+        if check_if_user_aborted(parameters):
+            return (0, 0, 0, 0, 0, 0, True)
         responseMadeTrigger = time.time()
 
         # Check for response provided by the participant
@@ -1118,7 +1226,8 @@ def responseDecision(
                 decision = 'More'
             # Read oximeter
             task.readInWaiting()
-
+        if check_if_user_aborted(parameters):
+            return (0, 0, 0, 0, 0, 0, True)
     if parameters["device"] == "mouse":
 
         # Initialise response feedback
@@ -1143,13 +1252,17 @@ def responseDecision(
         slower.draw()
         faster.draw()
         parameters["win"].flip()
-
+        if check_if_user_aborted(parameters):
+            return (0, 0, 0, 0, 0, 0, True)
         this_hr.play()
         clock = core.Clock()
         clock.reset()
         parameters["myMouse"].clickReset()
         buttons, decisionRT = parameters["myMouse"].getPressed(getTime=True)
+
         while True:
+            if check_if_user_aborted(parameters):
+                return (0, 0, 0, 0, 0, 0, True)
             buttons, decisionRT = parameters["myMouse"].getPressed(getTime=True)
             trialdur = clock.getTime()
             task.readInWaiting()
@@ -1205,6 +1318,8 @@ def responseDecision(
             core.wait(1)
 
     isCorrect = decision == condition
+    if check_if_user_aborted(parameters):
+        return (0, 0, 0, 0, 0, 0, True)
     # Feedback
     if feedback is True:
         if isCorrect:
@@ -1230,13 +1345,13 @@ def responseDecision(
         respProvided,
         decision,
         decisionRT,
-        isCorrect,
+        isCorrect, False
     )
 
 
 def confidenceRatingTask(
         parameters: dict,
-) -> Tuple[Optional[float], Optional[float], bool, Optional[float]]:
+) -> Tuple[Optional[float], Optional[float], bool, Optional[float],bool]:
     """Confidence rating scale, using keyboard or mouse inputs.
 
     Parameters
@@ -1250,7 +1365,8 @@ def confidenceRatingTask(
 
     # Initialise default values
     confidence, confidenceRT = None, None
-
+    if check_if_user_aborted(parameters):
+        return (0, 0, 0, 0, True)
     if parameters["device"] == "keyboard":
 
         # markerStart = np.random.choice(
@@ -1290,7 +1406,8 @@ def confidenceRatingTask(
             ratingScale.draw()
             message.draw()
             parameters["win"].flip()
-
+        if check_if_user_aborted(parameters):
+            return (0, 0, 0, 0, True)
         confidence = ratingScale.getRating()
         confidenceRT = ratingScale.getRT()
 
@@ -1334,6 +1451,8 @@ def confidenceRatingTask(
         buttons, confidenceRT = parameters["myMouse"].getPressed(getTime=True)
 
         while True:
+            if check_if_user_aborted(parameters):
+                return (0, 0, 0, 0, True)
             parameters["win"].mouseVisible = False
             trialdur = clock.getTime()
             buttons, confidenceRT = parameters["myMouse"].getPressed(getTime=True)
@@ -1377,6 +1496,8 @@ def confidenceRatingTask(
                 message.draw()
                 parameters["win"].flip()
                 core.wait(0.2)
+                if check_if_user_aborted(parameters):
+                    return (0, 0, 0, 0, True)
                 break
             elif trialdur > parameters["maxRatingTime"]:  # if too long
                 ratingProvided = False
@@ -1395,6 +1516,8 @@ def confidenceRatingTask(
                 message.draw()
                 parameters["win"].flip()
                 core.wait(0.5)
+                if check_if_user_aborted(parameters):
+                    return (0, 0, 0, 0, True)
                 break
             for label in text_labels:
                 label.draw()
@@ -1404,7 +1527,7 @@ def confidenceRatingTask(
     ratingEndTrigger = time.time()
     parameters["win"].flip()
 
-    return confidence, confidenceRT, ratingProvided, ratingEndTrigger
+    return confidence, confidenceRT, ratingProvided, ratingEndTrigger,False
 
 
 def extract_element(cell):
