@@ -1369,47 +1369,121 @@ def confidenceRatingTask(
         return (0, 0, 0, 0, True)
     if parameters["device"] == "keyboard":
 
-        # markerStart = np.random.choice(
-        #     np.arange(parameters["confScale"][0], parameters["confScale"][1])
-        # )
-        markerStart = (parameters["confScale"][0] + parameters["confScale"][1]) // 2
-        ratingScale = visual.RatingScale(
-            parameters["win"],
-            low=parameters["confScale"][0],
-            high=parameters["confScale"][1],
-            noMouse=True,
-            scale=None, showValue=False,
-            labels=parameters["labelsRating"],
-            acceptKeys="space",
-            markerStart=markerStart,
-            # languageStyle=parameters['languageStyle'],
-
-        )
-
+        parameters["win"].mouseVisible = False
         message = visual.TextStim(
             parameters["win"],
             height=parameters["textSize"],
+            pos=(0, 0.2),
             text=parameters["texts"]["Confidence"],
             languageStyle=parameters['languageStyle'],
             wrapWidth=50
         )
+        slider = visual.Slider(
+            win=parameters["win"],
+            name="slider",
+            pos=(0, -0.2),
+            size=(0.7, 0.1),
+            granularity=1,
+            ticks=(0, 100),
+            style="rating",
+            color="LightGray",
+            flip=False, startValue=50
+        )
 
-        # Wait for response
-        ratingProvided = False
+        text_labels = [
+            visual.TextStim(parameters["win"], text=label, pos=pos, languageStyle=parameters['languageStyle'],
+                            wrapWidth=50, height=parameters["textSize"]) for label, pos in
+            zip(parameters["texts"]["VASlabels"], [(-0.35, -0.3), (0.35, -0.3)])]
+
+        slider.marker.size = (0.03, 0.03)
         clock = core.Clock()
-        while clock.getTime() < parameters["maxRatingTime"]:
-            if not ratingScale.noResponse:
-                ratingScale.markerColor = (0, 0, 1)
-                if clock.getTime() > parameters["minRatingTime"]:
-                    ratingProvided = True
-                    break
-            ratingScale.draw()
+
+        # Initialize response parameters
+        response = None
+        key_times = {'left': None, 'right': None}  # Track when keys are pressed
+
+        while True:
+            if check_if_user_aborted(parameters):
+                return (0, 0, 0, 0, True)
+            trialdur = clock.getTime()
+
+            # Check for keyboard input
+            keys = event.getKeys(timeStamped=True)
+            for key, key_time in keys:
+                if key in ['left', 'right']:
+                    if key_times[key] is None:
+                        key_times[key] = key_time  # Record the first press time
+
+            # Handle key hold duration and update marker position
+            for key in ['left', 'right']:
+                if key_times[key] is not None:
+                    duration = clock.getTime() - key_times[key]
+                    movement = int(duration * 10) +1  # Increase speed over time
+
+                    if key == 'left':
+                        slider.markerPos -= movement
+                    elif key == 'right':
+                        slider.markerPos += movement
+
+                    # Ensure marker position stays within bounds
+                    if slider.markerPos < 0:
+                        slider.markerPos = 0
+                    elif slider.markerPos > 100:
+                        slider.markerPos = 100
+
+            # Reset key times when keys are released
+            if not event.getKeys(['left']):
+                key_times['left'] = None
+            if not event.getKeys(['right']):
+                key_times['right'] = None
+
+            # Check if response provided
+            if ('space' in [key for key, _ in keys]) and (trialdur > parameters["minRatingTime"]):
+                confidence, confidenceRT, ratingProvided = (
+                    slider.markerPos,
+                    clock.getTime(),
+                    True,
+                )
+                print(
+                    f"... Confidence level: {confidence}"
+                    + f" with response time {round(confidenceRT, 2)} seconds"
+                )
+                # Change marker color after response provided
+                slider.marker.color = "green"
+                for label in text_labels:
+                    label.draw()
+                slider.draw()
+                message.draw()
+                parameters["win"].flip()
+                core.wait(0.2)
+                if check_if_user_aborted(parameters):
+                    return (0, 0, 0, 0, True)
+                break
+            elif trialdur > parameters["maxRatingTime"]:  # if too long
+                ratingProvided = False
+
+                # Text feedback if no rating provided
+                message = visual.TextStim(
+                    parameters["win"],
+                    height=parameters["textSize"],
+                    text="Too late",
+                    color="red",
+                    pos=(0.0, -0.2),
+                    languageStyle=parameters['languageStyle'],
+                    wrapWidth=50
+                )
+                message.draw()
+                parameters["win"].flip()
+                core.wait(0.5)
+                if check_if_user_aborted(parameters):
+                    return (0, 0, 0, 0, True)
+                break
+
+            for label in text_labels:
+                label.draw()
+            slider.draw()
             message.draw()
             parameters["win"].flip()
-        if check_if_user_aborted(parameters):
-            return (0, 0, 0, 0, True)
-        confidence = ratingScale.getRating()
-        confidenceRT = ratingScale.getRT()
 
     elif parameters["device"] == "mouse":
 
