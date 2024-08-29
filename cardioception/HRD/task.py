@@ -1,6 +1,7 @@
 # Author: Nicolas Legrand <nicolas.legrand@cas.au.dk>
 import json
 import pickle
+import random
 import time
 from typing import Optional, Tuple
 
@@ -1387,7 +1388,7 @@ def confidenceRatingTask(
             ticks=(0, 100),
             style="rating",
             color="LightGray",
-            flip=False, startValue=50
+            flip=False, startValue=random.randint(30, 70)
         )
 
         text_labels = [
@@ -1409,15 +1410,14 @@ def confidenceRatingTask(
 
             # Check for keyboard input
             keys = event.getKeys(timeStamped=True)
+            keys_list = []
             for key, key_time in keys:
-                if key in ['left', 'right']:
-                    if key_times[key] is None:
-                        key_times[key] = key_time  # Record the first press time
-
-            # Handle key hold duration and update marker position
-            for key in ['left', 'right']:
-                if key_times[key] is not None:
-                    duration = clock.getTime() - key_times[key]
+                keys_list.append(key)
+                if key in key_times and key_times[key] is None:
+                    key_times[key] = key_time  # Record the first press time
+            for key, key_time in keys:
+                if key in key_times:
+                    duration = key_times[key] - key_time
                     movement = int(duration * 10) +1  # Increase speed over time
 
                     if key == 'left':
@@ -1432,13 +1432,13 @@ def confidenceRatingTask(
                         slider.markerPos = 100
 
             # Reset key times when keys are released
-            if not event.getKeys(['left']):
+            if 'left' not in keys_list or 'right' in keys_list:
                 key_times['left'] = None
-            if not event.getKeys(['right']):
+            if 'right' not in keys_list or 'left' in keys_list:
                 key_times['right'] = None
 
             # Check if response provided
-            if ('space' in [key for key, _ in keys]) and (trialdur > parameters["minRatingTime"]):
+            if ('space' in keys_list) and (trialdur > parameters["minRatingTime"]):
                 confidence, confidenceRT, ratingProvided = (
                     slider.markerPos,
                     clock.getTime(),
@@ -1511,7 +1511,7 @@ def confidenceRatingTask(
             ticks=(0, 100),
             style="rating",
             color="LightGray",
-            flip=False, startValue=50
+            flip=False, startValue=random.randint(30, 70)
 
         )
         text_labels = [
