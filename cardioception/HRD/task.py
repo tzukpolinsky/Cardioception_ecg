@@ -1400,7 +1400,7 @@ def confidenceRatingTask(
             zip(parameters["texts"]["VASlabels"], [(-0.35, -0.3), (0.35, -0.3)])]
 
         slider.marker.size = (0.03, 0.03)
-        clock = core.Clock()
+        start_time = core.getTime()
 
         # Initialize response parameters
         key_times = {'left': None, 'right': None}  # Track when keys are pressed
@@ -1408,7 +1408,7 @@ def confidenceRatingTask(
         while True:
             if check_if_user_aborted(parameters):
                 return (0, 0, 0, 0, True)
-            trialdur = clock.getTime()
+            current_time = core.getTime()
             keys = key_board.getKeys(keyList=['right', 'left', 'space'], waitRelease=False, clear=False)
             # Check for keyboard input
             if keys is not None and len(keys) > 0:
@@ -1417,8 +1417,8 @@ def confidenceRatingTask(
                     key_board.clearEvents()
                     continue
                 if latest_key.name in key_times:
-                    duration = trialdur - latest_key.tDown
-                    movement = int(duration*5) + 1  # Increase speed over time
+                    duration = current_time - latest_key.tDown
+                    movement = int(duration * 5) + 1  # Increase speed over time
                     if latest_key.name == 'left':
                         slider.markerPos -= movement
                     elif latest_key.name == 'right':
@@ -1431,10 +1431,10 @@ def confidenceRatingTask(
                         slider.markerPos = 100
 
                     # Check if response provided
-                if ('space' == latest_key.name) and (trialdur > parameters["minRatingTime"]):
+                if ('space' == latest_key.name) and (current_time - start_time > parameters["minRatingTime"]):
                     confidence, confidenceRT, ratingProvided = (
                         slider.markerPos,
-                        clock.getTime(),
+                        current_time - start_time,
                         True,
                     )
                     print(
@@ -1452,7 +1452,7 @@ def confidenceRatingTask(
                     if check_if_user_aborted(parameters):
                         return (0, 0, 0, 0, True)
                     break
-            elif trialdur > parameters["maxRatingTime"]:  # if too long
+            elif current_time - start_time > parameters["maxRatingTime"]:  # if too long
                 ratingProvided = False
 
                 # Text feedback if no rating provided
@@ -1521,7 +1521,7 @@ def confidenceRatingTask(
             if check_if_user_aborted(parameters):
                 return (0, 0, 0, 0, True)
             parameters["win"].mouseVisible = False
-            trialdur = clock.getTime()
+            current_time = clock.getTime()
             buttons, confidenceRT = parameters["myMouse"].getPressed(getTime=True)
 
             # Mouse position (keep in the rectangle)
@@ -1545,7 +1545,7 @@ def confidenceRatingTask(
             slider.markerPos = 50 + (p * 50)
 
             # Check if response provided
-            if (buttons == [1, 0, 0]) & (trialdur > parameters["minRatingTime"]):
+            if (buttons == [1, 0, 0]) & (current_time > parameters["minRatingTime"]):
                 confidence, confidenceRT, ratingProvided = (
                     slider.markerPos,
                     clock.getTime(),
@@ -1566,7 +1566,7 @@ def confidenceRatingTask(
                 if check_if_user_aborted(parameters):
                     return (0, 0, 0, 0, True)
                 break
-            elif trialdur > parameters["maxRatingTime"]:  # if too long
+            elif current_time > parameters["maxRatingTime"]:  # if too long
                 ratingProvided = False
                 confidenceRT = parameters["myMouse"].clickReset()
 
