@@ -9,13 +9,14 @@ import numpy as np
 import pandas as pd
 import pkg_resources  # type: ignore
 from psychopy import core, event, sound, visual
+from psychopy.hardware import keyboard
 
 
 def run(
         parameters: dict,
         confidenceRating: bool = True,
         runTutorial: bool = False,
-)->bool:
+) -> bool:
     """Run the Heart Rate Discrimination task.
 
     Parameters
@@ -332,6 +333,7 @@ def run(
     core.quit()
     return False
 
+
 def check_if_user_aborted(parameters: dict):
     keys = event.getKeys()
     if "escape" in keys:
@@ -366,7 +368,7 @@ def trial(
     float,
     Optional[float],
     Optional[float],
-    float,bool
+    float, bool
 ]:
     """Run one trial of the Heart Rate Discrimination task.
 
@@ -677,7 +679,7 @@ def trial(
             confidence,
             confidenceRT,
             ratingProvided,
-            ratingEndTrigger,userAborted
+            ratingEndTrigger, userAborted
         ) = confidenceRatingTask(parameters)
     else:
         ratingStartTrigger, ratingEndTrigger = None, None
@@ -720,7 +722,7 @@ def trial(
         responseMadeTrigger,
         ratingStartTrigger,
         ratingEndTrigger,
-        endTrigger,False
+        endTrigger, False
     )
 
 
@@ -1145,6 +1147,7 @@ def tutorial(parameters: dict):
     waitInput(parameters)
     return False
 
+
 def responseDecision(
         this_hr,
         parameters: dict,
@@ -1352,7 +1355,7 @@ def responseDecision(
 
 def confidenceRatingTask(
         parameters: dict,
-) -> Tuple[Optional[float], Optional[float], bool, Optional[float],bool]:
+) -> Tuple[Optional[float], Optional[float], bool, Optional[float], bool]:
     """Confidence rating scale, using keyboard or mouse inputs.
 
     Parameters
@@ -1400,29 +1403,25 @@ def confidenceRatingTask(
         clock = core.Clock()
 
         # Initialize response parameters
-        response = None
         key_times = {'left': None, 'right': None}  # Track when keys are pressed
-
+        key_board = keyboard.Keyboard()
         while True:
             if check_if_user_aborted(parameters):
                 return (0, 0, 0, 0, True)
             trialdur = clock.getTime()
-
+            keys = key_board.getKeys(keyList=['right', 'left', 'space'], waitRelease=False, clear=False)
             # Check for keyboard input
-            keys = event.getKeys(timeStamped=True)
-            keys_list = []
-            for key, key_time in keys:
-                keys_list.append(key)
-                if key in key_times and key_times[key] is None:
-                    key_times[key] = key_time  # Record the first press time
-            for key, key_time in keys:
-                if key in key_times:
-                    duration = key_times[key] - key_time
-                    movement = int(duration * 10) +1  # Increase speed over time
-
-                    if key == 'left':
+            if keys is not None and len(keys) > 0:
+                latest_key = keys[-1]
+                if latest_key.duration is not None:
+                    key_board.clearEvents()
+                    continue
+                if latest_key.name in key_times:
+                    duration = trialdur - latest_key.tDown
+                    movement = int(duration*5) + 1  # Increase speed over time
+                    if latest_key.name == 'left':
                         slider.markerPos -= movement
-                    elif key == 'right':
+                    elif latest_key.name == 'right':
                         slider.markerPos += movement
 
                     # Ensure marker position stays within bounds
@@ -1431,34 +1430,28 @@ def confidenceRatingTask(
                     elif slider.markerPos > 100:
                         slider.markerPos = 100
 
-            # Reset key times when keys are released
-            if 'left' not in keys_list or 'right' in keys_list:
-                key_times['left'] = None
-            if 'right' not in keys_list or 'left' in keys_list:
-                key_times['right'] = None
-
-            # Check if response provided
-            if ('space' in keys_list) and (trialdur > parameters["minRatingTime"]):
-                confidence, confidenceRT, ratingProvided = (
-                    slider.markerPos,
-                    clock.getTime(),
-                    True,
-                )
-                print(
-                    f"... Confidence level: {confidence}"
-                    + f" with response time {round(confidenceRT, 2)} seconds"
-                )
-                # Change marker color after response provided
-                slider.marker.color = "green"
-                for label in text_labels:
-                    label.draw()
-                slider.draw()
-                message.draw()
-                parameters["win"].flip()
-                core.wait(0.2)
-                if check_if_user_aborted(parameters):
-                    return (0, 0, 0, 0, True)
-                break
+                    # Check if response provided
+                if ('space' == latest_key.name) and (trialdur > parameters["minRatingTime"]):
+                    confidence, confidenceRT, ratingProvided = (
+                        slider.markerPos,
+                        clock.getTime(),
+                        True,
+                    )
+                    print(
+                        f"... Confidence level: {confidence}"
+                        + f" with response time {round(confidenceRT, 2)} seconds"
+                    )
+                    # Change marker color after response provided
+                    slider.marker.color = "green"
+                    for label in text_labels:
+                        label.draw()
+                    slider.draw()
+                    message.draw()
+                    parameters["win"].flip()
+                    core.wait(0.2)
+                    if check_if_user_aborted(parameters):
+                        return (0, 0, 0, 0, True)
+                    break
             elif trialdur > parameters["maxRatingTime"]:  # if too long
                 ratingProvided = False
 
@@ -1601,7 +1594,7 @@ def confidenceRatingTask(
     ratingEndTrigger = time.time()
     parameters["win"].flip()
 
-    return confidence, confidenceRT, ratingProvided, ratingEndTrigger,False
+    return confidence, confidenceRT, ratingProvided, ratingEndTrigger, False
 
 
 def extract_element(cell):
