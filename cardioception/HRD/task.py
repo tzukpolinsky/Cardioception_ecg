@@ -1477,7 +1477,7 @@ def confidenceRatingTask(
             slider.draw()
             message.draw()
             parameters["win"].flip()
-
+        key_board.clearEvents()
     elif parameters["device"] == "mouse":
 
         # Use the mouse position to update the slider position
