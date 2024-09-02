@@ -51,7 +51,7 @@ if __name__ == "__main__":
                                nFeedback=subject_info['number of feedback trials'],
                                nConfidence=subject_info['number of confidence trials'])
     # Run task
-    if task.run(parameters, confidenceRating=True, runTutorial=False):
+    if task.run(parameters, confidenceRating=True, runTutorial=True):
         print('user aborted the task in the middle')
 
     # run_hrd_report(results_path,samples_per_seconds,results_path)
