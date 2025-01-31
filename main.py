@@ -5,12 +5,11 @@ from psychopy import core, gui, data
 from cardioception.reports import report
 from cardioception.HRD.parameters import getParameters
 from cardioception.HRD import task
-from cardioception.HRD.HRDReport import run_hrd_report
+# from cardioception.HRD.HRDReport import run_hrd_report
 
 if __name__ == "__main__":
     subject_info = {
         'Subject Number': '',
-        'Gender': ['Male', 'Female', 'Other'],
         'Session': '001',
         'exteroception': True,
         'number of trials': 100,
@@ -54,4 +53,4 @@ if __name__ == "__main__":
     if task.run(parameters, confidenceRating=True, runTutorial=True):
         print('user aborted the task in the middle')
 
-    # run_hrd_report(results_path,samples_per_seconds,results_path)
+  #    run_hrd_report(results_path,samples_per_seconds,results_path)
