@@ -41,13 +41,14 @@ def run(
     subject_meta['startTutorial'] = time.time()
     # Show tutorial and training trials
     if runTutorial is True:
-        if tutorial(parameters):
-            return True
+        tutorial(parameters)
+
     subject_meta['endTutorial'] = time.time()
     subject_meta['durationTutorial'] = subject_meta['endTutorial'] - subject_meta['startTutorial']
     nTrial_before_break = 0
     subject_meta['startExp'] = time.time()
     break_number = 1
+
     for nTrial, modality, trialType in zip(
             range(parameters["nTrials"]),
             parameters["Modality"],
@@ -58,7 +59,7 @@ def run(
         estimatedThreshold, estimatedSlope = None, None
 
         # Wait for key press if this is the first trial
-        if nTrial == 0:
+        if runTutorial == False and nTrial == 0:
             # Ask the participant to press default button to start
             messageStart = visual.TextStim(
                 parameters["win"],
@@ -206,12 +207,12 @@ def run(
         )
 
         # Save the results at each iteration
-        parameters["results_df"].to_csv(
+        parameters["results_df"].to_excel(
             parameters["resultPath"]
             + "/"
             + parameters["participant"]
             + parameters["session"]
-            + f"_trail_{nTrial}.csv",
+            + f"_trail_{nTrial}.xlsx",
             index=False,
         )
 
@@ -240,9 +241,9 @@ def run(
             signal_df = parameters['signal_df']
             current_df = signal_df[(signal_df['nTrial'] <= nTrial) & (signal_df['nTrial'] >= nTrial_before_break)]
             current_df['signal'] = current_df['signal'].apply(lambda x: x[0])
-            current_df.to_csv(
+            current_df.to_excel(
                 parameters["resultPath"] + "/" + parameters["participant"] + parameters[
-                    "session"] + f"signal_{nTrial_before_break}_{nTrial}.csv",
+                    "session"] + f"signal_{nTrial_before_break}_{nTrial}.xlsx",
                 index=False)
             nTrial_before_break = nTrial
             # Wait for participant input before continue
@@ -263,21 +264,21 @@ def run(
     subject_meta['endExp'] = time.time()
     subject_meta['durationExp'] = subject_meta['endExp'] - subject_meta['startExp']
     # Save the final results
-    print("Saving final results in .csv file...")
-    parameters["results_df"].to_csv(
+    print("Saving final results in .excel file...")
+    parameters["results_df"].to_excel(
         parameters["resultPath"]
         + "/"
         + parameters["participant"]
         + parameters["session"]
-        + "_final.csv",
+        + "_final.xlsx",
         index=False,
     )
 
     # Save the final signals file
     print("Saving signal data frame...")
     parameters["signal_df"]['signal'] = parameters["signal_df"]['signal'].apply(lambda x: x[0])
-    parameters["signal_df"].to_csv(
-        parameters["resultPath"] + "/" + parameters["participant"] + "_signal.csv",
+    parameters["signal_df"].to_excel(
+        parameters["resultPath"] + "/" + parameters["participant"] + "_signal.xlsx",
         index=False,
     )
 
@@ -853,7 +854,7 @@ def tutorial(parameters: dict):
         Task parameters.
 
     """
-
+    tutorial_end = False
     # Introduction
     intro = visual.TextStim(
         parameters["win"],
@@ -873,7 +874,7 @@ def tutorial(parameters: dict):
     intro.draw()
     press.draw()
     parameters["win"].flip()
-    core.wait(1)
+    core.wait(0.5)
 
     waitInput(parameters)
 
@@ -893,7 +894,7 @@ def tutorial(parameters: dict):
     parameters["heartLogo"].draw()
     press.draw()
     parameters["win"].flip()
-    core.wait(1)
+    core.wait(0.5)
 
     waitInput(parameters)
 
@@ -910,7 +911,7 @@ def tutorial(parameters: dict):
     listenIcon.draw()
     press.draw()
     parameters["win"].flip()
-    core.wait(5)
+    core.wait(0.5)
     waitInput(parameters)
 
     # Response instructions
@@ -979,7 +980,7 @@ def tutorial(parameters: dict):
         parameters["listenLogo"].draw()
         press.draw()
         parameters["win"].flip()
-        core.wait(1)
+        core.wait(0.5)
 
         waitInput(parameters)
 
@@ -1139,13 +1140,14 @@ def tutorial(parameters: dict):
         languageStyle=parameters['languageStyle'],
         wrapWidth=50
     )
+
     taskPresentation.draw()
     press.draw()
 
     parameters["win"].flip()
     core.wait(1)
     waitInput(parameters)
-    return False
+
 
 
 def responseDecision(
