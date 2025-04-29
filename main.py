@@ -32,8 +32,8 @@ if __name__ == "__main__":
     # If the user presses 'Cancel', exit the program
     if not dlg.OK:
         core.quit()
-    date = subject_info['date']
-    results_path = os.path.join(os.getcwd(), os.path.join("results", f"{date}"))
+    subject = subject_info['Subject Number']
+    results_path = os.path.join(os.getcwd(), os.path.join("results", f"HRD_{subject}"))
     # Set global task parameters
     participant_name = subject_info['Subject Number']
     session = subject_info['Session']
@@ -50,7 +50,7 @@ if __name__ == "__main__":
                                nFeedback=subject_info['number of feedback trials'],
                                nConfidence=subject_info['number of confidence trials'])
     # Run task
-    if task.run(parameters, confidenceRating=True, runTutorial=True):
+    if task.run(parameters, confidenceRating=True, runTutorial=False):
         print('user aborted the task in the middle')
 
   #    run_hrd_report(results_path,samples_per_seconds,results_path)
