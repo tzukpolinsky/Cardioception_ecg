@@ -33,7 +33,8 @@ if __name__ == "__main__":
     if not dlg.OK:
         core.quit()
     date = subject_info['date']
-    results_path = os.path.join(os.getcwd(), os.path.join("results", f"{date}"))
+    subject = subject_info['Subject Number']
+    results_path = os.path.join(os.getcwd(), os.path.join("results", f"HRD_{subject}"))
     # Set global task parameters
     participant_name = subject_info['Subject Number']
     session = subject_info['Session']
