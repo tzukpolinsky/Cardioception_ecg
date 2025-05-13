@@ -9,18 +9,36 @@ import pkg_resources  # type: ignore
 import serial
 from systole import serialSim
 from systole.recording import Oximeter
+from cardioception.HBC.languages import english, hebrew
+from psychopy import parallel, core, sound, visual
+
+_port = None
+
+
+def send(code: int, PULSE_MS):
+    """Send an 8‑bit value as a short TTL pulse."""
+    if _port is None:
+        return
+    _port.setData(code)  # raise the lines
+    core.wait(PULSE_MS / 1000)  # keep them high
+    _port.setData(0)
 
 
 def getParameters(
-    participant: str = "Participant",
-    session: str = "001",
-    serialPort: str = "COM3",
-    taskVersion: str = "Garfinkel",
-    setup: str = "behavioral",
-    screenNb: int = 0,
-    fullscr: bool = True,
-    resultPath: Optional[str] = None,
-    systole_kw: dict = {},
+        participant: str = "Participant",
+        session: str = "001",
+        serialPort: str = "COM3",
+        taskVersion: str = "Garfinkel",
+        setup: str = "behavioral",
+        screenNb: int = 0,
+        fullscr: bool = True,
+        resultPath: Optional[str] = None,
+        systole_kw: dict = {},
+        exteroception: bool = True,
+        EEG_trigger_pulse: int = 4,
+        EEG_triggers_port: int = 0,
+        data_stream_device: str = 'oxi',
+        language='english', maxRatingTime=5
 ) -> Dict:
     """Create Heartbeat Counting task parameters.
 
@@ -38,14 +56,10 @@ def getParameters(
         e.g. `"COM3"` for USB ports on Windows.
     session : int
         Session number. Default to '001'.
-    setup : str
-        Context of oximeter recording. `"behavioral"` will record through a Nonin
-        pulse oximeter, `"test"` will use pre-recorded pulse time series (for testing
-        only).
     systole_kw : dict
         Additional keyword arguments for :py:class:`systole.recorder.Oxmeter`.
     taskVersion : str or None
-        Task version to run. Can be 'Garfinkel', 'Shandry', 'test' or None.
+        Task version to run. Can be 'Garfinkel', 'Schandry', 'test' or None.
 
     Attributes
     ----------
@@ -106,37 +120,31 @@ def getParameters(
         The window in which to draw objects.
 
     """
-    from psychopy import sound, visual
-
+    global _port
     parameters: Dict[str, Any] = {}
     parameters["restPeriod"] = True
     parameters["restLength"] = 30
     parameters["randomize"] = True
     parameters["startKey"] = "space"
     parameters["rating"] = True
-    parameters["confScale"] = [1, 7]
-    parameters["labelsRating"] = ["Guess", "Certain"]
+    parameters["confScale"] = [1, 100]
+    parameters["labelsRating"] = ["שחנמ", "חוטב"]
     parameters["taskVersion"] = taskVersion
-    parameters["results_df"] = pd.DataFrame({})
-    parameters["setup"] = setup
-
+    parameters["results_df"] = None
+    parameters['exteroception'] = exteroception
+    parameters['language'] = language
+    parameters['setup'] = setup
+    parameters['languageStyle'] = 'RTL' if language == 'hebrew' else 'LTR'
+    parameters['alignHoriz'] = 'right' if language == 'hebrew' else 'left'
+    parameters["minRatingTime"] = 0.5
+    parameters["maxRatingTime"] = maxRatingTime
     # Initialize triggers dictionary with None
     # Some or all can later be overwrited with callable
     # sending the information needed.
-    parameters["triggers"] = {
-        "trialStart": None,
-        "trialStop": None,
-        "listeningStart": None,
-        "listeningStop": None,
-        "decisionStart": None,
-        "decisionStop": None,
-        "confidenceStart": None,
-        "confidenceStop": None,
-    }
 
     # Experimental design - can choose between a version based on recent
     # papers from Sarah Garfinkel's group, or the classic Schandry approach.
-    # The primary difference ebtween the two is the order of trials and the
+    # The primary difference between the two is the order of trials and the
     # use of resting periods between trials.
     if parameters["taskVersion"] == "Garfinkel":
         parameters["times"] = np.array([25, 30, 35, 40, 45, 50])
@@ -201,105 +209,67 @@ def getParameters(
         pos=(0.0, -0.2),
     )
     parameters["heartLogo"].size *= 0.05
-
+    parameters['data_stream_device'] = data_stream_device
     if setup == "behavioral":
         # PPG recording
-        port = serial.Serial(serialPort)
-        parameters["oxiTask"] = Oximeter(
-            serial=port, sfreq=75, add_channels=1, **systole_kw
-        )
-        parameters["oxiTask"].setup().read(duration=1)
+        if data_stream_device == 'oxi':
+
+            port = serial.Serial(serialPort)
+            parameters["oxiTask"] = Oximeter(
+                serial=port, sfreq=75, add_channels=1, **systole_kw
+            )
+            parameters["oxiTask"].setup().read(duration=1)
+        elif data_stream_device == 'EEG':
+            PORT_ADDR = EEG_triggers_port
+            parameters['EEG triggers port'] = EEG_triggers_port
+            parameters["EEG trigger pulse (MS)"] = EEG_trigger_pulse
+            _port = parallel.ParallelPort(address=PORT_ADDR)
+            parameters["triggers"] = {
+                "restStart": lambda: send(9, EEG_trigger_pulse),
+                "restEnd": lambda: send(10, EEG_trigger_pulse),
+                "trialStart": lambda: send(1, EEG_trigger_pulse),
+                "trialStop": lambda: send(8, EEG_trigger_pulse),
+                "listeningStart": lambda: send(2, EEG_trigger_pulse),
+                "listeningStop": lambda: send(3, EEG_trigger_pulse),
+                "decisionStart": lambda: send(4, EEG_trigger_pulse),
+                "decisionStop": lambda: send(5, EEG_trigger_pulse),
+                "confidenceStart": lambda: send(6, EEG_trigger_pulse),
+                "confidenceStop": lambda: send(7, EEG_trigger_pulse),
+            }
     elif setup == "test":
         # Use pre-recorded pulse time series for testing
-        port = serialSim()
-        parameters["oxiTask"] = Oximeter(
-            serial=port, sfreq=75, add_channels=1, **systole_kw
-        )
-        parameters["oxiTask"].setup().read(duration=1)
+        if data_stream_device == 'oxi':
+            port = serialSim()
+            parameters["oxiTask"] = Oximeter(
+                serial=port, sfreq=75, add_channels=1, **systole_kw
+            )
+            parameters["oxiTask"].setup().read(duration=1)
+        elif data_stream_device == 'EEG':
+
+            parameters['EEG triggers port'] = EEG_triggers_port
+            parameters["EEG trigger pulse (MS)"] = EEG_trigger_pulse
+            parameters["triggers"] = {
+                "restStart": lambda: send(9, EEG_trigger_pulse),
+                "restEnd": lambda: send(10, EEG_trigger_pulse),
+                "trialStart": lambda: send(1, EEG_trigger_pulse),
+                "trialStop": lambda: send(8, EEG_trigger_pulse),
+                "listeningStart": lambda: send(2, EEG_trigger_pulse),
+                "listeningStop": lambda: send(3, EEG_trigger_pulse),
+                "decisionStart": lambda: send(4, EEG_trigger_pulse),
+                "decisionStop": lambda: send(5, EEG_trigger_pulse),
+                "confidenceStart": lambda: send(6, EEG_trigger_pulse),
+                "confidenceStop": lambda: send(7, EEG_trigger_pulse),
+            }
 
     #######
     # Texts
     #######
 
     # Task instructions
-    parameters["texts"] = dict()
-    parameters["texts"]["Rest"] = "Please sit quietly until the next session"
-    parameters["texts"]["Count"] = (
-        "After you hear START, try to count your heartbeats"
-        " by concentrating on your body feelings."
-        " Stop counting when you hear STOP"
-    )
-    parameters["texts"]["Training"] = (
-        "After you hear START, try to count your heartbeats"
-        " by concentrating on your body feelings"
-        " Stop counting when you hear STOP"
-    )
-    parameters["texts"]["nCount"] = (
-        "How many heartbeats did you count?"
-        " Write a number and press ENTER to validate."
-    )
-    parameters["texts"]["confidence"] = (
-        "How confident are you about your count?"
-        "Use the RIGHT/LEFT keys to select and the DOWN key to confirm"
-    )
-
-    # Tutorial instructions
-    parameters["texts"]["Tutorial1"] = (
-        "During this experiment, we will ask you to silently"
-        " count your heartbeats for different intervals of time."
-    )
-    parameters["texts"]["Tutorial2"] = (
-        'When you see this "heart" icon, you will silently count your'
-        " heartbeats by focusing on your body sensations."
-    )
-    parameters["texts"]["Tutorial3"] = (
-        'Sometime, you will also encounter this "rest" icon.'
-        " In this case your task will just be to sit quietly until the next"
-        " session."
-    )
-    parameters["texts"]["Tutorial4"] = (
-        "The beginning and the end of the task will be signalled when you hear"
-        " the words 'START'' and 'STOP'. While counting your heartbeats, you"
-        " may close your eyes if you find that helpful. Please keep your hand"
-        " still during the counting period, to avoid interfering with"
-        " the heartbeat recording."
-    )
-    parameters["texts"]["Tutorial5"] = (
-        "After the counting part of the task, you will be asked to report the"
-        " exact number of heartbeats you felt during the interval between"
-        " 'START' and 'STOP'. Please do not try to estimate the number of"
-        " heartbeats, but instead only report the heartbeats you actually felt"
-        " during the interval. You will input your response using the number"
-        " pad and press return when done. You can also correct your response"
-        " using backspace."
-    )
-    parameters["texts"]["Tutorial6"] = (
-        "Once you have made your response, you will estimate your subjective"
-        " feeling of confidence in how accurate your count was"
-        " for that interval. A large number here means that you are totally"
-        " certain you counted the exact number of heartbeats that occured,"
-        " and a small number means that you are totally uncertain or felt that"
-        " you were guessing about the"
-        " number of heartbeats. You should use the RIGHT and LEFT"
-        " key to select your response and the DOWN key to confirm."
-    )
-    parameters["texts"]["Tutorial7"] = (
-        "Before the main task begins there is a short resting period of"
-        " several minutes, during which we will calibrate the heartbeat"
-        " recording. During this period, please sit quietly with your"
-        " hands still to avoid interfering with the calibration."
-        " Afterwards, the counting task will begin, and will take about"
-        " 6 minutes in total."
-    )
-    parameters["texts"]["Tutorial8"] = (
-        "You will now complete a short practice task."
-        " Please ask the experimenter if you have any questions before"
-        " continuing to the main experiment."
-    )
-    parameters["texts"]["Tutorial9"] = (
-        "Good job! If you have any question, ask the experimenter now,"
-        " otherwise press SPACE to continue to the experiment."
-    )
+    if language == 'english':
+        parameters["texts"] = english(exteroception)
+    elif language == 'hebrew':
+        parameters["texts"] = hebrew(exteroception)
     parameters["textSize"] = 0.04
 
     return parameters

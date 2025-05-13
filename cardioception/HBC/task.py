@@ -1,29 +1,33 @@
 # Author: Nicolas Legrand <nicolas.legrand@cas.au.dk>
-
+import random
+import time
 from typing import Optional, Tuple
 
 import numpy as np
 import pandas as pd
+from psychopy import visual, core, event
+from psychopy.hardware import keyboard
 
 
 def run(
-    parameters: dict,
-    runTutorial: bool = True,
-):
+        parameters: dict,
+        runTutorial: bool = True,
+) -> bool:
     """Run the entire task sequence.
 
     Parameters
     ----------
     parameters : dict
         Task parameters.
-    tutorial : bool
+    runTutorial : bool
         If `True`, will present a tutorial with 10 training trial with feedback and 5
         trials with confidence rating.
-
+    Returns
+    ---------
+    bool: did the subject ended the task
     """
 
-    from psychopy import core, visual
-
+    is_EEG = parameters['data_stream_device'] == 'EGG'
     # Run tutorial
     if runTutorial is True:
         tutorial(parameters)
@@ -31,38 +35,54 @@ def run(
     # Rest
     if parameters["restPeriod"] is True:
         rest(parameters, duration=parameters["restLength"])
-
+    user_aborted = False
     for condition, duration, nTrial in zip(
-        parameters["conditions"],
-        parameters["times"],
-        range(0, len(parameters["conditions"])),
+            parameters["conditions"],
+            parameters["times"],
+            range(0, len(parameters["conditions"])),
     ):
-
-        parameters["triggers"]["trialStart"]  # Send trigger or None
-
-        nCount, confidence, confidenceRT = trial(
-            condition, duration, nTrial, parameters
-        )
-
-        parameters["triggers"]["trialStop"]  # Send trigger or None
+        #     parameters["triggers"]["trialStart"]
+        # Send trigger or None
+        # fire("trialStart", parameters)
+        if is_EEG:
+            parameters['triggers']['trialStart']()
+        nCount, confidence, confidenceRT, actual_duration, user_aborted = trial(condition, duration, nTrial, parameters)
+        if user_aborted:
+            break
+        if is_EEG:
+            parameters["triggers"]["trialStop"]()  # Send trigger or None
 
         # Store results in a DataFrame
-        parameters["results_df"] = pd.concat(
-            [
-                parameters["results_df"],
-                pd.DataFrame(
-                    {
-                        "nTrial": [nTrial],
-                        "Reported": [nCount],
-                        "Condition": [condition],
-                        "Duration": [duration],
-                        "Confidence": [confidence],
-                        "ConfidenceRT": [confidenceRT],
-                    }
-                ),
-            ],
-            ignore_index=True,
-        )
+        if parameters["results_df"] is None:
+            parameters["results_df"] = pd.DataFrame(
+                {
+                    "nTrial": [nTrial],
+                    "Reported": [nCount],
+                    "Condition": [condition],
+                    "Duration": [duration],
+                    "Actual duration": [actual_duration],
+                    "Confidence": [confidence],
+                    "ConfidenceRT": [confidenceRT],
+                }
+            )
+        else:
+            parameters["results_df"] = pd.concat(
+                [
+                    parameters["results_df"],
+                    pd.DataFrame(
+                        {
+                            "nTrial": [nTrial],
+                            "Reported": [nCount],
+                            "Condition": [condition],
+                            "Duration": [duration],
+                            "Actual duration": [actual_duration],
+                            "Confidence": [confidence],
+                            "ConfidenceRT": [confidenceRT],
+                        }
+                    ),
+                ],
+                ignore_index=True,
+            )
 
         # Save the results at each iteration
         parameters["results_df"].to_csv(
@@ -70,7 +90,7 @@ def run(
             + "/"
             + parameters["participant"]
             + parameters["session"]
-            + ".txt",
+            + ".csv",
             index=False,
         )
 
@@ -80,28 +100,172 @@ def run(
         + "/"
         + parameters["participant"]
         + parameters["session"]
-        + "_final.txt",
+        + "_final.csv",
         index=False,
     )
-
     # End of the task
-    end = visual.TextStim(
+    if not user_aborted:
+        end = visual.TextStim(
+            parameters["win"],
+            height=parameters["textSize"],
+            pos=(0.0, 0.0),
+            text=parameters["texts"]["task_completion"],
+        )
+        end.draw()
+        parameters["win"].flip()
+    core.wait(3)
+    parameters["win"].close()
+    core.quit()
+    return user_aborted
+
+
+def check_if_user_aborted(parameters: dict):
+    keys = event.getKeys()
+    if "escape" in keys:
+        print("User abort")
+        parameters["win"].close()
+        core.quit()
+        return True
+    return False
+
+
+def confidenceRatingTask(
+        parameters: dict,
+) -> Tuple[float, float, bool, float, bool]:
+    """Confidence rating scale, using keyboard or mouse inputs.
+
+    Parameters
+    ----------
+    parameters : dict
+        Parameters dictionary.
+
+    """
+
+    print("...starting confidence rating.")
+
+    # Initialise default values
+    confidence, confidenceRT = None, None
+    if check_if_user_aborted(parameters):
+        return -1.0, -1.0, False, -1.0, True
+    parameters["triggers"]["confidenceStart"]()
+    parameters["win"].mouseVisible = False
+    message = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
-        pos=(0.0, 0.0),
-        text="You have completed the task. Thank you for your participation.",
+        pos=(0, 0.2),
+        text=parameters["texts"]["confidence"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
     )
-    end.draw()
+    slider = visual.Slider(
+        win=parameters["win"],
+        name="slider",
+        pos=(0, -0.2),
+        size=(0.7, 0.1),
+        granularity=1,
+        ticks=(0, 100),
+        style="rating",
+        color="LightGray",
+        flip=False, startValue=random.randint(30, 70)
+    )
+
+    text_labels = [
+        visual.TextStim(parameters["win"], text=label, pos=pos, languageStyle=parameters['languageStyle'],
+                        wrapWidth=50, height=parameters["textSize"]) for label, pos in
+        zip(parameters["texts"]["VASlabels"], [(-0.35, -0.3), (0.35, -0.3)])]
+
+    slider.marker.size = (0.03, 0.03)
+    start_time = core.getTime()
+
+    # Initialize response parameters
+    key_times = {'left': None, 'right': None}  # Track when keys are pressed
+    key_board = keyboard.Keyboard()
+    key_board.clearEvents()
+    while True:
+        if check_if_user_aborted(parameters):
+            return -1.0, -1.0, False, -1.0, True
+        current_time = core.getTime()
+        keys = key_board.getKeys(keyList=['right', 'left', 'space'], waitRelease=False, clear=False)
+        # Check for keyboard input
+        if keys is not None and len(keys) > 0:
+            latest_key = keys[-1]
+            if latest_key.duration is not None:
+                key_board.clearEvents()
+                continue
+            if latest_key.name in key_times:
+                duration = current_time - latest_key.tDown
+                movement = int(duration * 5) + 1  # Increase speed over time
+                if latest_key.name == 'left':
+                    slider.markerPos -= movement
+                elif latest_key.name == 'right':
+                    slider.markerPos += movement
+
+                # Ensure marker position stays within bounds
+                if slider.markerPos < 0:
+                    slider.markerPos = 0
+                elif slider.markerPos > 100:
+                    slider.markerPos = 100
+
+                # Check if response provided
+            if ('space' == latest_key.name) and (current_time - start_time > parameters["minRatingTime"]):
+                confidence, confidenceRT, ratingProvided = (
+                    slider.markerPos,
+                    current_time - start_time,
+                    True,
+                )
+                print(
+                    f"... Confidence level: {confidence}"
+                    + f" with response time {round(confidenceRT, 2)} seconds"
+                )
+                # Change marker color after response provided
+                slider.marker.color = "green"
+                for label in text_labels:
+                    label.draw()
+                slider.draw()
+                message.draw()
+                parameters["win"].flip()
+                core.wait(0.2)
+                if check_if_user_aborted(parameters):
+                    return -1.0, -1.0, False, -1.0, True
+                break
+        elif current_time - start_time > parameters["maxRatingTime"]:  # if too long
+            ratingProvided = False
+
+            # Text feedback if no rating provided
+            message = visual.TextStim(
+                parameters["win"],
+                height=parameters["textSize"],
+                text="Too late",
+                color="red",
+                pos=(0.0, -0.2),
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=50
+            )
+            message.draw()
+            parameters["win"].flip()
+            core.wait(0.5)
+            if check_if_user_aborted(parameters):
+                return -1.0, -1.0, False, -1.0, True
+            break
+
+        for label in text_labels:
+            label.draw()
+        slider.draw()
+        message.draw()
+        parameters["win"].flip()
+    key_board.clearEvents()
+    ratingEndTrigger = time.time()
     parameters["win"].flip()
-    core.wait(3)
+    parameters["triggers"]["confidenceStop"]()
+    return confidence, confidenceRT, ratingProvided, ratingEndTrigger, False
 
 
 def trial(
-    condition: str,
-    duration: int,
-    nTrial: int,
-    parameters: dict,
-) -> Tuple[Optional[int], Optional[float], Optional[float]]:
+        condition: str,
+        duration: int,
+        nTrial: int,
+        parameters: dict,
+) -> Tuple[Optional[int], Optional[float], Optional[float], Optional[float], Optional[bool]]:
     """Run one trial.
 
     Parameters
@@ -110,7 +274,7 @@ def trial(
         The trial condition, can be `"Rest"` or `"Count"`.
     duration : int
         The lenght of the recording (in seconds).
-    ntrial : int
+    nTrial : int
         Trial number.
     parameters : dict
         Task parameters.
@@ -128,22 +292,23 @@ def trial(
     """
 
     from psychopy import core, event, visual
-
     # Initialize default values
     confidence, confidenceRT = None, None
     nCounts: str = ""
 
     # Ask the participant to press 'Space' (default) to start the trial
     messageStart = visual.TextStim(
-        parameters["win"], height=parameters["textSize"], text="Press space to continue"
+        parameters["win"], height=parameters["textSize"], text=parameters["texts"]["continue_text"]
     )
     messageStart.draw()
     parameters["win"].flip()
     event.waitKeys(keyList=parameters["startKey"])
     parameters["win"].flip()
-
-    parameters["oxiTask"].setup()
-    parameters["oxiTask"].read(duration=2)
+    is_oxi = parameters['data_stream_device'] == 'oxi'
+    is_EEG = parameters['data_stream_device'] == 'EGG'
+    if is_oxi:
+        parameters["oxiTask"].setup()
+        parameters["oxiTask"].read(duration=2)
 
     # Show instructions
     if condition == "Rest":
@@ -167,44 +332,53 @@ def trial(
     parameters["win"].flip()
 
     # Wait for a beat to start the task
-    parameters["oxiTask"].waitBeat()
+    if is_oxi:
+        parameters["oxiTask"].waitBeat()
     core.wait(3)
 
     # Sound signaling trial start
     if (condition == "Count") | (condition == "Training"):
-        parameters["oxiTask"].readInWaiting()
-        # Add event marker
-        parameters["oxiTask"].channels["Channel_0"][-1] = 1
+        if is_oxi:
+            parameters["oxiTask"].readInWaiting()
+            # Add event marker
+            parameters["oxiTask"].channels["Channel_0"][-1] = 1
         parameters["noteStart"].play()
-        parameters["triggers"]["listeningStart"]
+        if is_EEG:
+            parameters["triggers"]["listeningStart"]()
         core.wait(1)
-
-    # Record for a desired time length
-    parameters["oxiTask"].read(duration=duration - 1)
-
+    time_start = time.time()
+    if is_oxi:
+        # Record for a desired time length
+        parameters["oxiTask"].read(duration=duration - 1)
+    if is_EEG:
+        core.wait(duration - 1)
+    actual_duration = time.time() - time_start
     # Sound signaling trial stop
     if (condition == "Count") | (condition == "Training"):
         # Add event marker
-        parameters["oxiTask"].readInWaiting()
-        parameters["oxiTask"].channels["Channel_0"][-1] = 2
+        if is_oxi:
+            parameters["oxiTask"].readInWaiting()
+            parameters["oxiTask"].channels["Channel_0"][-1] = 2
         parameters["noteStop"].play()
-        parameters["triggers"]["listeningStop"]
+        if is_EEG:
+            parameters["triggers"]["listeningStop"]()
         core.wait(3)
-        parameters["oxiTask"].readInWaiting()
+        if is_oxi:
+            parameters["oxiTask"].readInWaiting()
 
     # Hide instructions
     parameters["win"].flip()
 
     # Save recording
-    parameters["oxiTask"].save(
-        parameters["resultPath"]
-        + "/"
-        + parameters["participant"]
-        + str(nTrial)
-        + "_"
-        + str(nTrial)
-    )
-
+    if is_oxi:
+        parameters["oxiTask"].save(
+            parameters["resultPath"]
+            + "/"
+            + parameters["participant"]
+            + str(nTrial)
+            + "_"
+            + str(nTrial)
+        )
     ###############################
     # Record participant estimation
     ###############################
@@ -218,8 +392,8 @@ def trial(
         )
         messageCount.draw()
         parameters["win"].flip()
-
-        parameters["triggers"]["decisionStart"]  # Send trigger or None
+        if is_EEG:
+            parameters["triggers"]["decisionStart"]()  # Send trigger or None
 
         nCounts = ""
         while True:
@@ -254,11 +428,8 @@ def trial(
             )
 
             if key[0] == "escape":
-                keys = event.getKeys()
-                if "escape" in keys:
-                    print("User abort")
-                    parameters["win"].close()
-                    core.quit()
+                print("User abort")
+                return -1, -1.0, -1.0, -1.0, True
             if key[0] == "backspace":
                 if nCounts:
                     nCounts = nCounts[:-1]
@@ -268,7 +439,7 @@ def trial(
                         parameters["win"],
                         height=parameters["textSize"],
                         pos=(0, 0.2),
-                        text="You should only provide numbers",
+                        text=parameters["texts"]["not_number_input"],
                     )
                     messageError.draw()
                     parameters["win"].flip()
@@ -278,7 +449,7 @@ def trial(
                         parameters["win"],
                         height=parameters["textSize"],
                         pos=(0, 0.2),
-                        text="You should provide numbers",
+                        text=parameters["texts"]["not_number_input"],
                     )
                     messageError.draw()
                     parameters["win"].flip()
@@ -297,42 +468,23 @@ def trial(
             recordedText.draw()
             messageCount.draw()
             parameters["win"].flip()
-
-        parameters["triggers"]["decisionStop"]  # Send trigger or None
+        if is_EEG:
+            parameters["triggers"]["decisionStop"]()  # Send trigger or None
 
         ##############
         # Rating scale
         ##############
         if parameters["rating"] is True:
-            markerStart = np.random.choice(
-                np.arange(parameters["confScale"][0], parameters["confScale"][1])
-            )
-            ratingScale = visual.RatingScale(
-                parameters["win"],
-                low=parameters["confScale"][0],
-                high=parameters["confScale"][1],
-                noMouse=True,
-                labels=parameters["labelsRating"],
-                acceptKeys="down",
-                markerStart=markerStart,
-            )
-            message = visual.TextStim(
-                parameters["win"],
-                text=parameters["texts"]["confidence"],
-                height=parameters["textSize"],
-            )
-            parameters["triggers"]["confidenceStart"]
-            while ratingScale.noResponse:
-                message.draw()
-                ratingScale.draw()
-                parameters["win"].flip()
-            confidence = ratingScale.getRating()
-            confidenceRT = ratingScale.getRT()
-            parameters["triggers"]["confidenceStop"]
+            (
+                confidence,
+                confidenceRT,
+                ratingProvided,
+                ratingEndTrigger, userAborted
+            ) = confidenceRatingTask(parameters)
 
-    finalCount = int(nCounts) if nCounts else None
+    finalCount = int(nCounts) if nCounts else -1
 
-    return finalCount, confidence, confidenceRT
+    return finalCount, -1 if confidence is None else confidence, -1 if confidenceRT is None else confidenceRT, actual_duration, False
 
 
 def tutorial(parameters: dict):
@@ -358,7 +510,7 @@ def tutorial(parameters: dict):
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
-        text="Please press SPACE to continue",
+        text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
     )
     press.draw()
@@ -377,7 +529,7 @@ def tutorial(parameters: dict):
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
-        text="Please press SPACE to continue",
+        text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
     )
     press.draw()
@@ -386,7 +538,6 @@ def tutorial(parameters: dict):
 
     # Tutorial 3
     if parameters["taskVersion"] == "Shandry":
-
         messageStart = visual.TextStim(
             parameters["win"],
             height=parameters["textSize"],
@@ -398,7 +549,7 @@ def tutorial(parameters: dict):
         press = visual.TextStim(
             parameters["win"],
             height=parameters["textSize"],
-            text="Please press SPACE to continue",
+            text=parameters["texts"]["continue_text"],
             pos=(0.0, -0.4),
         )
         press.draw()
@@ -415,7 +566,7 @@ def tutorial(parameters: dict):
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
-        text="Please press SPACE to continue",
+        text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
     )
     press.draw()
@@ -433,7 +584,7 @@ def tutorial(parameters: dict):
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
-        text="Please press SPACE to continue",
+        text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
     )
     press.draw()
@@ -450,7 +601,7 @@ def tutorial(parameters: dict):
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
-        text="Please press SPACE to continue",
+        text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
     )
     press.draw()
@@ -467,7 +618,7 @@ def tutorial(parameters: dict):
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
-        text="Please press SPACE to continue",
+        text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
     )
     press.draw()
@@ -484,7 +635,7 @@ def tutorial(parameters: dict):
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
-        text="Please press SPACE to continue",
+        text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
     )
     press.draw()
@@ -504,7 +655,7 @@ def tutorial(parameters: dict):
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
-        text="Please press SPACE to continue",
+        text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
     )
     press.draw()
@@ -525,8 +676,8 @@ def rest(parameters: dict, duration: float = 300.0):
 
     """
 
-    from psychopy import visual
-
+    is_oxi = parameters['data_stream_device'] == 'oxi'
+    is_EEG = parameters['data_stream_device'] == 'EGG'
     # Show the resting state instructions
     messageStart = visual.TextStim(
         parameters["win"],
@@ -539,10 +690,15 @@ def rest(parameters: dict, duration: float = 300.0):
     parameters["win"].flip()
 
     # Record PPG signal
-    parameters["oxiTask"].setup()
-    parameters["oxiTask"].read(duration=duration)
+    if is_oxi:
+        parameters["oxiTask"].setup()
+        parameters["oxiTask"].read(duration=duration)
 
-    # Save recording
-    parameters["oxiTask"].save(
-        parameters["resultPath"] + "/" + parameters["participant"] + "_Rest"
-    )
+        # Save recording
+        parameters["oxiTask"].save(
+            parameters["resultPath"] + "/" + parameters["participant"] + "_Rest"
+        )
+    if is_EEG:
+        parameters['triggers']['restStart']()
+        core.wait(duration)
+        parameters['triggers']['restEnd']()

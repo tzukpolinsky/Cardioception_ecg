@@ -287,7 +287,17 @@ class BioHarnessLslCreator:
         await link.toggle_general(on_general)
 
 
+def resolve_stream_compat(prop, value):
+    """Handles both old and new pylsl resolve_stream(s) methods."""
+    try:
+        return pylsl.resolve_stream(prop, value)
+    except AttributeError:
+        # fallback for newer pylsl versions
+        return pylsl.resolve.resolve_stream(prop, value)
+
+
 class BioHarnessTask(BioHarnessLslCreator):
+
     def __init__(self, address, port, timeout, modalities=None, stream_prefix='Zephyr',
                  local_time=None):
         super().__init__(address, port, timeout, modalities, stream_prefix, local_time)
@@ -296,7 +306,7 @@ class BioHarnessTask(BioHarnessLslCreator):
         self.timestamps = []
         self.channels = {"Channel_0": []}
         for mod in self.modalities:
-            streams = pylsl.resolve_stream('type', mod)
+            streams = resolve_stream_compat('type', mod)
             if len(streams) > 0:
                 self.signals[mod] = pylsl.StreamInlet(streams[0])
 
@@ -342,4 +352,4 @@ class BioHarnessTask(BioHarnessLslCreator):
             print("empty cleaned signal")
             return [], np.array([])
         signals, info = nk.ecg_peaks(cleaned, sampling_rate=sampling_rate, method="neurokit")
-        return signal, np.array(signals["ECG_R_Peaks"]).astype(bool),timestamps
+        return signal, np.array(signals["ECG_R_Peaks"]).astype(bool), timestamps

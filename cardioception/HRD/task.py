@@ -1407,6 +1407,7 @@ def confidenceRatingTask(
         # Initialize response parameters
         key_times = {'left': None, 'right': None}  # Track when keys are pressed
         key_board = keyboard.Keyboard()
+        key_board.clearEvents()
         while True:
             if check_if_user_aborted(parameters):
                 return (0, 0, 0, 0, True)

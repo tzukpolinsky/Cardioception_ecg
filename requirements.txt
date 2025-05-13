@@ -11,6 +11,6 @@ systole
 setuptools
 packaging
 cbitstruct
-pylsl==1.16.2
+pylsl
 neurokit2
 git+https://github.com/pybluez/pybluez.git
