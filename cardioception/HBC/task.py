@@ -27,7 +27,7 @@ def run(
     bool: did the subject ended the task
     """
 
-    is_EEG = parameters['data_stream_device'] == 'EGG'
+
     # Run tutorial
     if runTutorial is True:
         tutorial(parameters)
@@ -35,22 +35,24 @@ def run(
     # Rest
     if parameters["restPeriod"] is True:
         rest(parameters, duration=parameters["restLength"])
+
     user_aborted = False
+
     for condition, duration, nTrial in zip(
             parameters["conditions"],
             parameters["times"],
             range(0, len(parameters["conditions"])),
     ):
-        #     parameters["triggers"]["trialStart"]
-        # Send trigger or None
-        # fire("trialStart", parameters)
-        if is_EEG:
-            parameters['triggers']['trialStart']()
+
+
+        parameters['triggers']['trialStart']()
+
         nCount, confidence, confidenceRT, actual_duration, user_aborted = trial(condition, duration, nTrial, parameters)
+
         if user_aborted:
             break
-        if is_EEG:
-            parameters["triggers"]["trialStop"]()  # Send trigger or None
+
+        parameters["triggers"]["trialStop"]()  # Send trigger or None
 
         # Store results in a DataFrame
         if parameters["results_df"] is None:
@@ -305,7 +307,7 @@ def trial(
     event.waitKeys(keyList=parameters["startKey"])
     parameters["win"].flip()
     is_oxi = parameters['data_stream_device'] == 'oxi'
-    is_EEG = parameters['data_stream_device'] == 'EGG'
+    is_EEG = parameters['data_stream_device'] == 'EEG'
     if is_oxi:
         parameters["oxiTask"].setup()
         parameters["oxiTask"].read(duration=2)
@@ -343,9 +345,9 @@ def trial(
             # Add event marker
             parameters["oxiTask"].channels["Channel_0"][-1] = 1
         parameters["noteStart"].play()
-        if is_EEG:
-            parameters["triggers"]["listeningStart"]()
-        core.wait(1)
+
+    parameters["triggers"]["listeningStart"]()
+    core.wait(1)
     time_start = time.time()
     if is_oxi:
         # Record for a desired time length
@@ -360,12 +362,12 @@ def trial(
             parameters["oxiTask"].readInWaiting()
             parameters["oxiTask"].channels["Channel_0"][-1] = 2
         parameters["noteStop"].play()
-        if is_EEG:
-            parameters["triggers"]["listeningStop"]()
-        core.wait(3)
+
         if is_oxi:
             parameters["oxiTask"].readInWaiting()
 
+    parameters["triggers"]["listeningStop"]()
+    core.wait(3)
     # Hide instructions
     parameters["win"].flip()
 
@@ -392,8 +394,8 @@ def trial(
         )
         messageCount.draw()
         parameters["win"].flip()
-        if is_EEG:
-            parameters["triggers"]["decisionStart"]()  # Send trigger or None
+
+        parameters["triggers"]["decisionStart"]()  # Send trigger or None
 
         nCounts = ""
         while True:
@@ -468,8 +470,8 @@ def trial(
             recordedText.draw()
             messageCount.draw()
             parameters["win"].flip()
-        if is_EEG:
-            parameters["triggers"]["decisionStop"]()  # Send trigger or None
+
+        parameters["triggers"]["decisionStop"]()  # Send trigger or None
 
         ##############
         # Rating scale
@@ -677,7 +679,7 @@ def rest(parameters: dict, duration: float = 300.0):
     """
 
     is_oxi = parameters['data_stream_device'] == 'oxi'
-    is_EEG = parameters['data_stream_device'] == 'EGG'
+    is_EEG = parameters['data_stream_device'] == 'EEG'
     # Show the resting state instructions
     messageStart = visual.TextStim(
         parameters["win"],
@@ -698,7 +700,7 @@ def rest(parameters: dict, duration: float = 300.0):
         parameters["oxiTask"].save(
             parameters["resultPath"] + "/" + parameters["participant"] + "_Rest"
         )
-    if is_EEG:
-        parameters['triggers']['restStart']()
-        core.wait(duration)
-        parameters['triggers']['restEnd']()
+
+    parameters['triggers']['restStart']()
+    core.wait(duration)
+    parameters['triggers']['restEnd']()

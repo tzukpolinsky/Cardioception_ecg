@@ -141,29 +141,27 @@ def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
     texts : dict
 
     """
-
-    texts = {
-        "Rest": "Please sit quietly until the next session",
-        "Count": (
-            "After you hear START, try to count your heartbeats"
-            " by concentrating on your body feelings."
-            " Stop counting when you hear STOP"
+    texts["Rest"] = ("Please sit quietly until the next session")
+    texts["Count"] = (
+            "אחרי שיושמע 'התחל' נסו לספור את פעימות הלב."
+            "יש להסתמך על תחושות הגוף"
+            "ניתן להפסיק לספור כשיושמע 'הספק'"
         ),
-        "Training": (
+    texts["Training"] = (
             "After you hear START, try to count your heartbeats"
             " by concentrating on your body feelings"
             " Stop counting when you hear STOP"
         ),
-        "nCount": (
-            "How many heartbeats did you count?"
-            " Write a number and press ENTER to validate."
+    texts["nCount"]= (
+            "כמה פעימות לב ספרת?"
+            "לרשום את המספר להקיש רווח"
+
         ),
-        "VASlabels": ["Guess", "Certain"],
-        "confidence": (
-            "How confident are you about your count?"
-            "Use the RIGHT/LEFT keys to select and the DOWN key to confirm"
-        ),
-    }
+    texts["VASlabels"] = ("מנחש", "בטוח"),
+    texts["confidence"] = (
+            "עד כמה את/ה בטוח/ה בהחלטה שלך?"
+            "ללחוץ ימינה או שמאלה כדי להזיז הסמן על הסקאלה"
+        )
 
     texts[
         "Tutorial1"
