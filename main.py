@@ -66,11 +66,13 @@ if __name__ == "__main__":
                                        nFeedback=HRD_subject_info['number of feedback trials'],
                                        nConfidence=HRD_subject_info['number of confidence trials'])
         # Run task
-        if HRD_task.run(parameters, confidenceRating=True, runTutorial=False):
+        if HRD_task.run(parameters, confidenceRating=True, runTutorial=True):
             print('user aborted the task in the middle')
+
     elif assignment_type == 'HBC':
         HBC_subject_info = {
             'task version': ['Garfinkel', 'Schandry', 'test'],
+            'data_stream_device': ['EEG'],
             'EEG triggers port': '0x6EFC',
             'EEG trigger pulse (MS)': 4,
             'task setup': ['behavioral', 'test']

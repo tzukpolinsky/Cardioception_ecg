@@ -35,9 +35,10 @@ def getParameters(
         resultPath: Optional[str] = None,
         systole_kw: dict = {},
         exteroception: bool = True,
+        with_EEG: bool = True,
         EEG_trigger_pulse: int = 4,
         EEG_triggers_port: int = 0,
-        data_stream_device: str = 'oxi',
+        data_stream_device: str = 'EEG',
         language='english', maxRatingTime=5
 ) -> Dict:
     """Create Heartbeat Counting task parameters.
