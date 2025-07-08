@@ -141,109 +141,209 @@ def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
     texts : dict
 
     """
-    texts["Rest"] = ("Please sit quietly until the next session")
-    texts["Count"] = (
-            "אחרי שיושמע 'התחל' נסו לספור את פעימות הלב."
-            "יש להסתמך על תחושות הגוף"
-            "ניתן להפסיק לספור כשיושמע 'הספק'"
+
+    texts = {
+
+        "Rest": "נא לשבת בשקט עד לתחילת החלק הבא.",
+
+        "Count": (
+        """      
+        """
         ),
-    texts["Training"] = (
-            "After you hear START, try to count your heartbeats"
-            " by concentrating on your body feelings"
-            " Stop counting when you hear STOP"
+
+        "CountExtero":(
+            """
+            """
         ),
-    texts["nCount"]= (
-            "כמה פעימות לב ספרת?"
-            "לרשום את המספר להקיש רווח"
+        "VASlabels": ["מנחש", "בטוח"],
+
+        "Training": (
+            """
+          אחרי שתשמע/י 'Start', נסה/י לספור את פעימות הלב שלך. 
+          יש להסתמך על תחושות הגוף. 
+          הפסיק/י לספור כאשר יושמע "Stop"
+            """
+        ),
+
+        "TrainingExtero": (
+            """
+          אחרי שתשמע/י 'Start', נסה/י לספור את הדאונד המדמה פעימות של הלב. 
+          הפסיק/י לספור כאשר יושמע "Stop"
+            """
+        ),
+
+        "nCount": (
+            """
+            כמה פעימות לב ספרת?
+            לרשום את המספר ולהקיש Enter להמשך.
+            """
 
         ),
-    texts["VASlabels"] = ("מנחש", "בטוח"),
-    texts["confidence"] = (
-            "עד כמה את/ה בטוח/ה בהחלטה שלך?"
-            "ללחוץ ימינה או שמאלה כדי להזיז הסמן על הסקאלה"
-        )
+        "confidence": (
+            """
+            עד כמה את/ה בטוח/ה בהחלטה שלך? 
+            ללחוץ 6 (ימינה) או 4 (שמאלה) כדי להזיז הסמן על הסקאלה.
+            ללחוץ Enter להמשך.
+            """
+      ),
+    }
 
-    texts[
-        "Tutorial1"
-    ] = (
-        "During this experiment, we will ask you to silently"
-        " count your heartbeats for different intervals of time."
+
+    texts["Rest"] = ("נא לשבת בשקט עד לתחילת החלק הבא.")
+
+    texts['continue_text'] = "נא ללחוץ על מקש Enter כדי להמשיך."
+    texts['not_number_input'] = "יש להזין מספרים בלבד."
+    texts['task_completion'] = "השלמת את המטלה. תודה על ההשתתפות."
+
+
+
+    """ Instructions "Tutorial1" to "Tutorial5" translated and adapted from: 
+    Desmedt, O., Luminet, O., and Corneille, O. (2018). 
+    The heartbeat counting task largely involves non-interoceptive processes:
+    Evidence from both the original and an adapted counting task. 
+    Biol. Psychol. 138, 185–188. 
+    https://doi.org/10.1016/j.biopsycho.2018.09.004.
+    
+    The english source version:
+        In this task, direct your attention to your heart and the associated physical sensations. 
+        You are required to sustain your focus on your heart for various durations and count the number of heartbeats you perceive. 
+        Begin silently counting when the heart symbol appears on the screen. 
+        When the heart symbol disappears, report the number of heartbeats you are sure you felt. 
+        Only report the number of heartbeats you are sure about, without trying to estimate your heart rate. 
+        During each trial, keep your eyes open, gaze at the screen and avoid moving. 
+        Refrain from guiding your responses by checking your pulse in your wrists or neck. 
+        Breathe spontaneously and avoid changing your breathing frequency or holding your breath.
+    
+    """
+
+    texts["Tutorial1"] = (
+        """
+        במטלה זו, יש לספור את פעימות הלב בחלונות זמן משתנים.
+        
+        כדי לעשות זאת, 
+        צריך לכוון את הקשב אל הלב שלך ולתחושות פיזיות הקשורות לפעילותו.
+        """
     )
 
-    texts[
-        "Tutorial2"
-    ] = (
-        'When you see this "heart" icon, you will silently count your'
-        " heartbeats by focusing on your body sensations."
+    texts["Tutorial2"] = (
+        """        
+        כאשר מופיע ציור של לב, ונשמעת המילה "Start" 
+        יש להתחיל לספור פעימות.  
+        
+        כאשר נשמעת המילה "Stop" עליך להפסיק את הספירה.
+        
+        בשלב זה, צריך להשתדל במיוחד לא לזוז,
+        שכן ההקלטות בו הן קריטיות.
+        """
+
     )
 
-    texts[
-        "Tutorial3"
-    ] = (
-        'Sometime, you will also encounter this "rest" icon.'
-        " In this case your task will just be to sit quietly until the next"
-        " session."
-    )
-    texts['continue_text'] = "Please press SPACE to continue"
-    texts['not_number_input'] = "You should only provide numbers"
-    texts['task_completion'] = "You have completed the task. Thank you for your participation."
-    if exteroception is True:
-        moreResp = "UP key"
-        lessResp = "DOWN key"
-        texts[
-            "Tutorial3bis"
-        ] = """For some trials, instead of seeing the heart icon, you will see a listening icon. You will then have to listen to a first set of beeps, instead of your heart."""
+    #texts[
+    #    "Tutorial3"
+    #] = (
+    #    'Sometime, you will also encounter this "rest" icon.'
+    #    " In this case your task will just be to sit quietly until the next"
+    #    " session."
+    #)
 
-        texts[
-            "Tutorial3ter"
-        ] = f"""After these first beeps, you will see the response icons appear, and a second set of beeps will play.
-
-                    As quickly and accurately as possible, you will listen to these beeps and decide if they are faster ({moreResp}) or slower ({lessResp}) than the first set of beeps.
-
-                    The second series of beeps will ALWAYS be slower or faster than the first series. Please guess, even if you are unsure."""
 
     texts["Tutorial4"] = (
-        "The beginning and the end of the task will be signalled when you hear"
-        " the words 'START'' and 'STOP'. While counting your heartbeats, you"
-        " may close your eyes if you find that helpful. Please keep your hand"
-        " still during the counting period, to avoid interfering with"
-        " the heartbeat recording."
+        """
+        לאחר מכן,  מדווחים על כמות הפעימות שספרת.
+        לשים לב לכתוב בדיוק כמה ספרת, 
+        מבלי להוסיף או להוריד מהמספר הזה בשל אומדנים אחרים שאולי יש לך.
+        
+        הדיווח נעשה באמצעות המספרים שממוקמים בצד ימין של המקלדת.
+        ניתן למחוק מספר שכתבת, באמצעות לחיצה על backspace הרגיל.
+        """
     )
     texts["Tutorial5"] = (
-        "After the counting part of the task, you will be asked to report the"
-        " exact number of heartbeats you felt during the interval between"
-        " 'START' and 'STOP'. Please do not try to estimate the number of"
-        " heartbeats, but instead only report the heartbeats you actually felt"
-        " during the interval. You will input your response using the number"
-        " pad and press return when done. You can also correct your response"
-        " using backspace."
+        """
+כאשר סופרים את הדופק "חשים אותו מבפנים" -      
+        כלומר, לא מרגישים אותו באמצעות הנחת אצבעות
+         על הזרוע או על הצוואר, לשם דוגמה.
+        
+        כמו כן, שומרים על נשימה טבעית.
+        ונמנעים, למשל, מעצירה של הנשימה. 
+       
+        כאשר סופרים את הפעימות, יש לשמור על עיניים פקוחות, ולמקד את המבט באיור של הלב.
+        כמו כן, להשתדל להמנע מכל תנועה. 
+        """
     )
 
+
+    """
+    Instructions "Tutorial6" to "Tutorial9" translated and adapted from Legrand's original code (see in the english above)
+    """
     texts["Tutorial6"] = (
-        "Once you have made your response, you will estimate your subjective"
-        " feeling of confidence in how accurate your count was"
-        " for that interval. A large number here means that you are totally"
-        " certain you counted the exact number of heartbeats that occured,"
-        " and a small number means that you are totally uncertain or felt that"
-        " you were guessing about the"
-        " number of heartbeats. You should use the RIGHT and LEFT"
-        " key to select your response and the DOWN key to confirm."
+       """
+       בכל פעם אחרי שכותבים את מספר פעימות הלב,
+       נאמוד את רמת הבטחון שלך לגבי אותה תשובה.
+       
+        האומדן יעשה באמצעות סקאלה של בין 100 (ימין עד הסוף) ל- 0 (שמאל עד הסוף).
+        
+        המשמעות של 100 היא שיש לך בטחון מוחלט שהתשובה שלך נכונה.
+        המשמעות של Enter היא שהתשובה שלך הייתה ניחוש.
+        
+        כדי לבצע שינוי בסקאלה יש להשתמש בספרות 6 (ימינה) או 4 (שמאלה)
+        שבצד ימין של המקלדת. 
+       
+       """
     )
+
     texts["Tutorial7"] = (
-        "Before the main task begins there is a short resting period of"
-        " several minutes, during which we will calibrate the heartbeat"
-        " recording. During this period, please sit quietly with your"
-        " hands still to avoid interfering with the calibration."
-        " Afterwards, the counting task will begin, and will take about"
-        " 6 minutes in total."
+        """
+        כעת נבצע אימון קצר.
+        """
+
     )
+
     texts["Tutorial8"] = (
-        "You will now complete a short practice task."
-        " Please ask the experimenter if you have any questions before"
-        " continuing to the main experiment."
+        """
+                מצויין!
+                
+        לשים לב שמהלך הניסוי עצמו
+        כאשר סופרים את פעימות הלב
+        יופיע ציור של לב בלבד, ללא הטקסט המצורף.
+        """
+
     )
+
     texts["Tutorial9"] = (
-        "Good job! If you have any question, ask the experimenter now,"
-        " otherwise press SPACE to continue to the experiment."
+        """
+        סה"כ אורך המטלה כ- 13 דקות.
+        
+        במידה ויש לך שאלות לגבי הניסוי,
+        אפשר לשאול את הנסיין עכשיו.
+        
+        אחרת, להקיש Enter כדי להתחיל בניסוי.
+        """
     )
+
+    if exteroception is True:
+
+        texts[
+            "TutorialExtero1"
+        ] = """
+        סיימת את החלק הראשון של המטלה!
+        
+        כעט נתחיל חלק נוסף.
+        
+        בחלק הזה נספור סאונד שמדמה קול של דופק.
+        
+        בדומה לחלק הקודם, 
+         הדיווח יהיה לגבי כמות הפעימות המדומות שספרת
+      
+        לבסוף, נאמוד את רמת הבטחון / אי-ודאות שלך.
+        
+        אורכו של חלק זה, זהה לחלק הקודם (בערך 13 דקות).
+        
+        """
+
+        texts[
+            "TutorialExtero2"
+        ] = """
+
+        """
+
     return texts

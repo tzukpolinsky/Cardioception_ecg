@@ -28,7 +28,7 @@ def getParameters(
         participant: str = "Participant",
         session: str = "001",
         serialPort: str = "COM3",
-        taskVersion: str = "Garfinkel",
+        taskVersion: str = "Zaccaro",
         setup: str = "behavioral",
         screenNb: int = 0,
         fullscr: bool = True,
@@ -39,7 +39,7 @@ def getParameters(
         EEG_trigger_pulse: int = 4,
         EEG_triggers_port: int = 0,
         data_stream_device: str = 'EEG',
-        language='english', maxRatingTime=5
+        language='english', maxRatingTime=10
 ) -> Dict:
     """Create Heartbeat Counting task parameters.
 
@@ -123,10 +123,10 @@ def getParameters(
     """
     global _port
     parameters: Dict[str, Any] = {}
-    parameters["restPeriod"] = True
+    parameters["restPeriod"] = False
     parameters["restLength"] = 30
     parameters["randomize"] = True
-    parameters["startKey"] = "space"
+    parameters["startKey"] = "return"
     parameters["rating"] = True
     parameters["confScale"] = [1, 100]
     parameters["labelsRating"] = ["שחנמ", "חוטב"]
@@ -159,6 +159,19 @@ def getParameters(
             "Count",
         ]
 
+    elif parameters["taskVersion"] == "Zaccaro":
+        import random
+        repeats = 3
+        parameters["times"] = []
+        parameters["conditions"] = []
+
+        for _ in range(repeats):
+            block_times = np.array([2, 3, 4, 10]) # np.array([25, 35, 45, 100])
+            np.random.shuffle(block_times)
+            parameters["times"].extend(block_times.tolist())
+            parameters["conditions"].extend(["Count"] * len(block_times))
+
+
     elif parameters["taskVersion"] == "Schandry":
         parameters["times"] = np.array([60, 25, 30, 35, 30, 45])
         parameters["conditions"] = ["Rest", "Count", "Rest", "Count", "Rest", "Count"]
@@ -182,13 +195,9 @@ def getParameters(
         os.makedirs(parameters["resultPath"])
 
     # Set note played at trial start
-    parameters["noteStart"] = sound.Sound(
-        pkg_resources.resource_filename("cardioception.HBC", "Sounds/start.wav")
-    )
+    parameters["noteStart"] = pkg_resources.resource_filename("cardioception.HBC", "Sounds/start.wav")
 
-    parameters["noteStop"] = sound.Sound(
-        pkg_resources.resource_filename("cardioception.HBC", "Sounds/stop.wav")
-    )
+    parameters["noteStop"] = pkg_resources.resource_filename("cardioception.HBC", "Sounds/stop.wav")
 
     # Open window
     if parameters["setup"] == "test":
@@ -210,6 +219,15 @@ def getParameters(
         pos=(0.0, -0.2),
     )
     parameters["heartLogo"].size *= 0.05
+
+    parameters["listen"] = visual.ImageStim(
+        win=parameters["win"],
+        units="height",
+        image=pkg_resources.resource_filename(__name__, "Images/listen.png"),
+        pos=(0.0, -0.2),
+    )
+    parameters["listen"].size *= 0.05
+
     parameters['data_stream_device'] = data_stream_device
     if setup == "behavioral":
         # PPG recording
@@ -226,16 +244,16 @@ def getParameters(
             parameters["EEG trigger pulse (MS)"] = EEG_trigger_pulse
             _port = parallel.ParallelPort(address=PORT_ADDR)
             parameters["triggers"] = {
-                "restStart": lambda: send(9, EEG_trigger_pulse),
-                "restEnd": lambda: send(10, EEG_trigger_pulse),
-                "trialStart": lambda: send(1, EEG_trigger_pulse),
-                "trialStop": lambda: send(8, EEG_trigger_pulse),
-                "listeningStart": lambda: send(2, EEG_trigger_pulse),
-                "listeningStop": lambda: send(3, EEG_trigger_pulse),
-                "decisionStart": lambda: send(4, EEG_trigger_pulse),
-                "decisionStop": lambda: send(5, EEG_trigger_pulse),
-                "confidenceStart": lambda: send(6, EEG_trigger_pulse),
-                "confidenceStop": lambda: send(7, EEG_trigger_pulse),
+                "restStart": lambda: send(20, EEG_trigger_pulse),
+                "restEnd": lambda: send(21, EEG_trigger_pulse),
+                "trialStart": lambda: send(10, EEG_trigger_pulse),
+                "trialStop": lambda: send(18, EEG_trigger_pulse),
+                "listeningStart": lambda: send(12, EEG_trigger_pulse),
+                "listeningStop": lambda: send(13, EEG_trigger_pulse),
+                "decisionStart": lambda: send(14, EEG_trigger_pulse),
+                "decisionStop": lambda: send(15, EEG_trigger_pulse),
+                "confidenceStart": lambda: send(16, EEG_trigger_pulse),
+                "confidenceStop": lambda: send(17, EEG_trigger_pulse),
             }
     elif setup == "test":
         # Use pre-recorded pulse time series for testing
@@ -250,16 +268,16 @@ def getParameters(
             parameters['EEG triggers port'] = EEG_triggers_port
             parameters["EEG trigger pulse (MS)"] = EEG_trigger_pulse
             parameters["triggers"] = {
-                "restStart": lambda: send(9, EEG_trigger_pulse),
-                "restEnd": lambda: send(10, EEG_trigger_pulse),
-                "trialStart": lambda: send(1, EEG_trigger_pulse),
-                "trialStop": lambda: send(8, EEG_trigger_pulse),
-                "listeningStart": lambda: send(2, EEG_trigger_pulse),
-                "listeningStop": lambda: send(3, EEG_trigger_pulse),
-                "decisionStart": lambda: send(4, EEG_trigger_pulse),
-                "decisionStop": lambda: send(5, EEG_trigger_pulse),
-                "confidenceStart": lambda: send(6, EEG_trigger_pulse),
-                "confidenceStop": lambda: send(7, EEG_trigger_pulse),
+                "restStart": lambda: send(20, EEG_trigger_pulse),
+                "restEnd": lambda: send(21, EEG_trigger_pulse),
+                "trialStart": lambda: send(10, EEG_trigger_pulse),
+                "trialStop": lambda: send(18, EEG_trigger_pulse),
+                "listeningStart": lambda: send(12, EEG_trigger_pulse),
+                "listeningStop": lambda: send(13, EEG_trigger_pulse),
+                "decisionStart": lambda: send(14, EEG_trigger_pulse),
+                "decisionStop": lambda: send(15, EEG_trigger_pulse),
+                "confidenceStart": lambda: send(16, EEG_trigger_pulse),
+                "confidenceStop": lambda: send(17, EEG_trigger_pulse),
             }
 
     #######

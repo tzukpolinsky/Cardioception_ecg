@@ -2,12 +2,18 @@
 import random
 import time
 from typing import Optional, Tuple
-
+import winsound
 import numpy as np
 import pandas as pd
 from psychopy import visual, core, event
 from psychopy.hardware import keyboard
-
+import os
+import re
+import simpleaudio as sa
+import ctypes
+from pydub import AudioSegment
+import platform
+import pkg_resources  # type: ignore
 
 def run(
         parameters: dict,
@@ -27,16 +33,33 @@ def run(
     bool: did the subject ended the task
     """
 
+    # Make sure numLock is "on".
+    if platform.system() == 'Windows':
+        ensure_numlock_on()
 
-    # Run tutorial
-    if runTutorial is True:
-        tutorial(parameters)
 
-    # Rest
-    if parameters["restPeriod"] is True:
-        rest(parameters, duration=parameters["restLength"])
+    if parameters["exteroception"] == False:
+        # Run tutorial
+        if runTutorial is True:
+            tutorial(parameters)
+        # Rest
+        if parameters["restPeriod"] is True:
+            rest(parameters, duration=parameters["restLength"])
+    else:
+        # Run tutorial
+        if runTutorial is True:
+            tutorialExtero(parameters)
+            # load sound files
+            path = pkg_resources.resource_filename("cardioception.HBC", "Sounds/heart_sounds")
+            sound_files = [f for f in os.listdir(path) if f.lower().endswith(".wav")]
+            if not sound_files:
+                raise ValueError("wav. files was not found")
+            bpm_selected = random.choice(sound_files)
+            print(f"randomly choose {bpm_selected}")
+            sound_path = os.path.join(path, bpm_selected)
 
     user_aborted = False
+
 
     for condition, duration, nTrial in zip(
             parameters["conditions"],
@@ -46,8 +69,10 @@ def run(
 
 
         parameters['triggers']['trialStart']()
-
-        nCount, confidence, confidenceRT, actual_duration, user_aborted = trial(condition, duration, nTrial, parameters)
+        if parameters["exteroception"] == False:
+            nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, modality = trial(condition, duration, nTrial, parameters)
+        else:
+            nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, modality = trial(condition, duration, nTrial, parameters, bpm_selected, sound_path)
 
         if user_aborted:
             break
@@ -58,6 +83,7 @@ def run(
         if parameters["results_df"] is None:
             parameters["results_df"] = pd.DataFrame(
                 {
+                    "modality": [modality],
                     "nTrial": [nTrial],
                     "Reported": [nCount],
                     "Condition": [condition],
@@ -65,6 +91,7 @@ def run(
                     "Actual duration": [actual_duration],
                     "Confidence": [confidence],
                     "ConfidenceRT": [confidenceRT],
+                    "bpm": [bpm]
                 }
             )
         else:
@@ -73,6 +100,7 @@ def run(
                     parameters["results_df"],
                     pd.DataFrame(
                         {
+                            "modality": [modality],
                             "nTrial": [nTrial],
                             "Reported": [nCount],
                             "Condition": [condition],
@@ -80,6 +108,7 @@ def run(
                             "Actual duration": [actual_duration],
                             "Confidence": [confidence],
                             "ConfidenceRT": [confidenceRT],
+                            "bpm":[bpm]
                         }
                     ),
                 ],
@@ -96,28 +125,33 @@ def run(
             index=False,
         )
 
-    # Save results
+     # Save results
     parameters["results_df"].to_csv(
         parameters["resultPath"]
         + "/"
         + parameters["participant"]
         + parameters["session"]
-        + "_final.csv",
+        + parameters["exteroception"]
+        + "final.csv",
         index=False,
     )
+
     # End of the task
     if not user_aborted:
         end = visual.TextStim(
             parameters["win"],
             height=parameters["textSize"],
-            pos=(0.0, 0.0),
+            pos=(0.0, 0.2),
             text=parameters["texts"]["task_completion"],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=15
         )
         end.draw()
         parameters["win"].flip()
-    core.wait(3)
+    core.wait(0.1)
     parameters["win"].close()
     core.quit()
+
     return user_aborted
 
 
@@ -129,6 +163,7 @@ def check_if_user_aborted(parameters: dict):
         core.quit()
         return True
     return False
+
 
 
 def confidenceRatingTask(
@@ -157,7 +192,7 @@ def confidenceRatingTask(
         pos=(0, 0.2),
         text=parameters["texts"]["confidence"],
         languageStyle=parameters['languageStyle'],
-        wrapWidth=50
+        wrapWidth=10
     )
     slider = visual.Slider(
         win=parameters["win"],
@@ -173,21 +208,21 @@ def confidenceRatingTask(
 
     text_labels = [
         visual.TextStim(parameters["win"], text=label, pos=pos, languageStyle=parameters['languageStyle'],
-                        wrapWidth=50, height=parameters["textSize"]) for label, pos in
+                        wrapWidth=15, height=parameters["textSize"]) for label, pos in
         zip(parameters["texts"]["VASlabels"], [(-0.35, -0.3), (0.35, -0.3)])]
 
     slider.marker.size = (0.03, 0.03)
     start_time = core.getTime()
 
     # Initialize response parameters
-    key_times = {'left': None, 'right': None}  # Track when keys are pressed
+    key_times = {'num_4': None, 'num_6': None}  # Track when keys are pressed
     key_board = keyboard.Keyboard()
     key_board.clearEvents()
     while True:
         if check_if_user_aborted(parameters):
             return -1.0, -1.0, False, -1.0, True
         current_time = core.getTime()
-        keys = key_board.getKeys(keyList=['right', 'left', 'space'], waitRelease=False, clear=False)
+        keys = key_board.getKeys(keyList=['num_6', 'num_4', 'return'], waitRelease=False, clear=False)
         # Check for keyboard input
         if keys is not None and len(keys) > 0:
             latest_key = keys[-1]
@@ -197,9 +232,9 @@ def confidenceRatingTask(
             if latest_key.name in key_times:
                 duration = current_time - latest_key.tDown
                 movement = int(duration * 5) + 1  # Increase speed over time
-                if latest_key.name == 'left':
+                if latest_key.name == 'num_4':
                     slider.markerPos -= movement
-                elif latest_key.name == 'right':
+                elif latest_key.name == 'num_6':
                     slider.markerPos += movement
 
                 # Ensure marker position stays within bounds
@@ -209,7 +244,7 @@ def confidenceRatingTask(
                     slider.markerPos = 100
 
                 # Check if response provided
-            if ('space' == latest_key.name) and (current_time - start_time > parameters["minRatingTime"]):
+            if ('return' == latest_key.name) and (current_time - start_time > parameters["minRatingTime"]):
                 confidence, confidenceRT, ratingProvided = (
                     slider.markerPos,
                     current_time - start_time,
@@ -267,6 +302,8 @@ def trial(
         duration: int,
         nTrial: int,
         parameters: dict,
+        bpm_selected = "",
+        sound_path = "",
 ) -> Tuple[Optional[int], Optional[float], Optional[float], Optional[float], Optional[bool]]:
     """Run one trial.
 
@@ -293,200 +330,417 @@ def trial(
 
     """
 
-    from psychopy import core, event, visual
     # Initialize default values
     confidence, confidenceRT = None, None
     nCounts: str = ""
 
     # Ask the participant to press 'Space' (default) to start the trial
-    messageStart = visual.TextStim(
-        parameters["win"], height=parameters["textSize"], text=parameters["texts"]["continue_text"]
-    )
-    messageStart.draw()
-    parameters["win"].flip()
-    event.waitKeys(keyList=parameters["startKey"])
-    parameters["win"].flip()
+    # messageStart = visual.TextStim(
+    #     parameters["win"],
+    #     height=parameters["textSize"],
+    #     text=parameters["texts"]["continue_text"],
+    #     languageStyle=parameters['languageStyle'],
+    #     wrapWidth=15
+    # )
+    # messageStart.draw()
+    # parameters["win"].flip()
+    # event.waitKeys(keyList=parameters["startKey"])
+    # parameters["win"].flip()
+
     is_oxi = parameters['data_stream_device'] == 'oxi'
     is_EEG = parameters['data_stream_device'] == 'EEG'
     if is_oxi:
         parameters["oxiTask"].setup()
         parameters["oxiTask"].read(duration=2)
 
-    # Show instructions
-    if condition == "Rest":
-        message = visual.TextStim(
-            parameters["win"],
-            text=parameters["texts"]["Rest"],
-            pos=(0.0, 0.2),
-            height=parameters["textSize"],
-        )
-        message.draw()
-        parameters["restLogo"].draw()
-    elif (condition == "Count") | (condition == "Training"):
-        message = visual.TextStim(
-            parameters["win"],
-            text=parameters["texts"]["Count"],
-            pos=(0.0, 0.2),
-            height=parameters["textSize"],
-        )
-        message.draw()
-        parameters["heartLogo"].draw()
-    parameters["win"].flip()
+    if parameters["exteroception"] == False:
 
-    # Wait for a beat to start the task
-    if is_oxi:
-        parameters["oxiTask"].waitBeat()
-    core.wait(3)
+        modality = "Intero"
+        # Show instructions
+        if condition == "Rest":
+            message = visual.TextStim(
+                parameters["win"],
+                text=parameters["texts"]["Rest"],
+                pos=(0.0, 0.2),
+                height=parameters["textSize"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            message.draw()
+            parameters["restLogo"].draw()
+        elif condition == "Count":
+            message = visual.TextStim(
+                parameters["win"],
+                text=parameters["texts"]["Count"],
+                pos=(0.0, 0.2),
+                height=parameters["textSize"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            message.draw()
+            parameters["heartLogo"].draw()
 
-    # Sound signaling trial start
-    if (condition == "Count") | (condition == "Training"):
-        if is_oxi:
-            parameters["oxiTask"].readInWaiting()
-            # Add event marker
-            parameters["oxiTask"].channels["Channel_0"][-1] = 1
-        parameters["noteStart"].play()
-
-    parameters["triggers"]["listeningStart"]()
-    core.wait(1)
-    time_start = time.time()
-    if is_oxi:
-        # Record for a desired time length
-        parameters["oxiTask"].read(duration=duration - 1)
-    if is_EEG:
-        core.wait(duration - 1)
-    actual_duration = time.time() - time_start
-    # Sound signaling trial stop
-    if (condition == "Count") | (condition == "Training"):
-        # Add event marker
-        if is_oxi:
-            parameters["oxiTask"].readInWaiting()
-            parameters["oxiTask"].channels["Channel_0"][-1] = 2
-        parameters["noteStop"].play()
-
-        if is_oxi:
-            parameters["oxiTask"].readInWaiting()
-
-    parameters["triggers"]["listeningStop"]()
-    core.wait(3)
-    # Hide instructions
-    parameters["win"].flip()
-
-    # Save recording
-    if is_oxi:
-        parameters["oxiTask"].save(
-            parameters["resultPath"]
-            + "/"
-            + parameters["participant"]
-            + str(nTrial)
-            + "_"
-            + str(nTrial)
-        )
-    ###############################
-    # Record participant estimation
-    ###############################
-    if (condition == "Count") | (condition == "Training"):
-        # Ask the participant to press 'Space' (default) to start the trial
-        messageCount = visual.TextStim(
-            parameters["win"],
-            height=parameters["textSize"],
-            pos=(0, 0.2),
-            text=parameters["texts"]["nCount"],
-        )
-        messageCount.draw()
+        elif condition == "Training":
+            message = visual.TextStim(
+                parameters["win"],
+                text=parameters["texts"]["Training"],
+                pos=(0.0, 0.2),
+                height=parameters["textSize"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            message.draw()
+            parameters["heartLogo"].draw()
         parameters["win"].flip()
 
-        parameters["triggers"]["decisionStart"]()  # Send trigger or None
+        # Wait for a beat to start the task
+        if is_oxi:
+            parameters["oxiTask"].waitBeat()
 
-        nCounts = ""
-        while True:
+        core.wait(0.05)
+        # Sound signaling trial start
+        if (condition == "Count") | (condition == "Training"):
+            if is_oxi:
+                parameters["oxiTask"].readInWaiting()
+                # Add event marker
+                parameters["oxiTask"].channels["Channel_0"][-1] = 1
 
-            # Record new key
-            key = event.waitKeys(
-                keyList=[
-                    "escape",
-                    "backspace",
-                    "return",
-                    "1",
-                    "2",
-                    "3",
-                    "4",
-                    "5",
-                    "6",
-                    "7",
-                    "8",
-                    "9",
-                    "0",
-                    "num_1",
-                    "num_2",
-                    "num_3",
-                    "num_4",
-                    "num_5",
-                    "num_6",
-                    "num_7",
-                    "num_8",
-                    "num_9",
-                    "num_0",
-                ]
+            winsound.PlaySound(parameters["noteStart"],
+                               winsound.SND_FILENAME)
+
+        parameters["triggers"]["listeningStart"]()
+      #  core.wait(0.004)
+        time_start = time.time()
+        if is_oxi:
+            # Record for a desired time length
+            parameters["oxiTask"].read(duration=duration - 1)
+        if is_EEG:
+            core.wait(duration - 1)
+        actual_duration = time.time() - time_start
+        # Sound signaling trial stop
+        if (condition == "Count") | (condition == "Training"):
+            # Add event marker
+            if is_oxi:
+                parameters["oxiTask"].readInWaiting()
+                parameters["oxiTask"].channels["Channel_0"][-1] = 2
+            winsound.PlaySound(parameters["noteStop"],
+                               winsound.SND_FILENAME)
+
+            if is_oxi:
+                parameters["oxiTask"].readInWaiting()
+
+        parameters["triggers"]["listeningStop"]()
+        core.wait(0.5)
+        # Hide instructions
+        parameters["win"].flip()
+
+        # Save recording
+        if is_oxi:
+            parameters["oxiTask"].save(
+                parameters["resultPath"]
+                + "/"
+                + parameters["participant"]
+                + str(nTrial)
+                + "_"
+                + str(nTrial)
             )
-
-            if key[0] == "escape":
-                print("User abort")
-                return -1, -1.0, -1.0, -1.0, True
-            if key[0] == "backspace":
-                if nCounts:
-                    nCounts = nCounts[:-1]
-            elif key[0] == "return":
-                if not all(char.isdigit() for char in nCounts):
-                    messageError = visual.TextStim(
-                        parameters["win"],
-                        height=parameters["textSize"],
-                        pos=(0, 0.2),
-                        text=parameters["texts"]["not_number_input"],
-                    )
-                    messageError.draw()
-                    parameters["win"].flip()
-                    core.wait(2)
-                elif nCounts == "":
-                    messageError = visual.TextStim(
-                        parameters["win"],
-                        height=parameters["textSize"],
-                        pos=(0, 0.2),
-                        text=parameters["texts"]["not_number_input"],
-                    )
-                    messageError.draw()
-                    parameters["win"].flip()
-                    core.wait(2)
-                else:
-                    break
-
-            else:
-                if key:
-                    nCounts += [s for s in key[0] if s.isdigit()][0]
-
-            # Show the text on the screen
-            recordedText = visual.TextStim(
-                parameters["win"], height=parameters["textSize"], text=nCounts
+        ###############################
+        # Record participant estimation
+        ###############################
+        if (condition == "Count") | (condition == "Training"):
+            # Ask the participant to press '0' (default) to start the trial
+            messageCount = visual.TextStim(
+                parameters["win"],
+                height=parameters["textSize"],
+                pos=(0, 0.2),
+                text=parameters["texts"]["nCount"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=10
             )
-            recordedText.draw()
             messageCount.draw()
             parameters["win"].flip()
 
-        parameters["triggers"]["decisionStop"]()  # Send trigger or None
+            parameters["triggers"]["decisionStart"]()  # Send trigger or None
 
-        ##############
-        # Rating scale
-        ##############
-        if parameters["rating"] is True:
-            (
-                confidence,
-                confidenceRT,
-                ratingProvided,
-                ratingEndTrigger, userAborted
-            ) = confidenceRatingTask(parameters)
+            nCounts = ""
+            while True:
 
-    finalCount = int(nCounts) if nCounts else -1
+                # Record new key
+                key = event.waitKeys(
+                    keyList=[
+                        "escape",
+                        "backspace",
+                        "return",
+                        "num_1",
+                        "num_2",
+                        "num_3",
+                        "num_4",
+                        "num_5",
+                        "num_6",
+                        "num_7",
+                        "num_8",
+                        "num_9",
+                        "num_0",
+                    ]
+                )
 
-    return finalCount, -1 if confidence is None else confidence, -1 if confidenceRT is None else confidenceRT, actual_duration, False
+                if key[0] == "escape":
+                    print("User abort")
+                    return -1, -1.0, -1.0, -1.0, True
+                if key[0] == "backspace":
+                    if nCounts:
+                        nCounts = nCounts[:-1]
+                elif key[0] == "return":
+                    if not all(char.isdigit() for char in nCounts):
+                        messageError = visual.TextStim(
+                            parameters["win"],
+                            height=parameters["textSize"],
+                            pos=(0, 0.2),
+                            text=parameters["texts"]["not_number_input"],
+                            languageStyle=parameters['languageStyle'],
+                            wrapWidth=15
+                        )
+                        messageError.draw()
+                        parameters["win"].flip()
+                        core.wait(0.1)
+                    elif nCounts == "":
+                        messageError = visual.TextStim(
+                            parameters["win"],
+                            height=parameters["textSize"],
+                            pos=(0, 0.2),
+                            text=parameters["texts"]["not_number_input"],
+                            languageStyle=parameters['languageStyle'],
+                            wrapWidth=15
+                        )
+                        messageError.draw()
+                        parameters["win"].flip()
+                        core.wait(0.1)
+                    else:
+                        break
+
+                else:
+                    if key:
+                        nCounts += [s for s in key[0] if s.isdigit()][0]
+
+                # Show the text on the screen
+                recordedText = visual.TextStim(
+                    parameters["win"], height=parameters["textSize"], text=nCounts
+                )
+                recordedText.draw()
+                messageCount.draw()
+                parameters["win"].flip()
+
+            parameters["triggers"]["decisionStop"]()  # Send trigger or None
+
+            ##############
+            # Rating scale
+            ##############
+            if parameters["rating"] is True:
+                (
+                    confidence,
+                    confidenceRT,
+                    ratingProvided,
+                    ratingEndTrigger, userAborted
+                ) = confidenceRatingTask(parameters)
+
+        bpm=None
+        finalCount = int(nCounts) if nCounts else -1
+
+    if parameters["exteroception"] == True:
+
+        modality = "Extero"
+        # Show instructions
+        if tutorial == True:
+            tutorialExtero(parameters)
+
+
+        if condition == "Count":
+            message = visual.TextStim(
+                parameters["win"],
+                text=parameters["texts"]["CountExtero"],
+                pos=(0.0, 0.2),
+                height=parameters["textSize"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            message.draw()
+            parameters["listen"].draw()
+
+        elif condition == "TrainingExtero":
+            message = visual.TextStim(
+                parameters["win"],
+                text=parameters["texts"]["TrainingExtero"],
+                pos=(0.0, 0.2),
+                height=parameters["textSize"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            message.draw()
+            parameters["listen"].draw()
+
+        parameters["win"].flip()
+
+        # Wait for a beat to start the task
+        if is_oxi:
+            parameters["oxiTask"].waitBeat()
+        core.wait(0.5)
+
+        # Sound signaling trial start
+        if (condition == "Count") | (condition == "Training"):
+            if is_oxi:
+                parameters["oxiTask"].readInWaiting()
+                # Add event marker
+                parameters["oxiTask"].channels["Channel_0"][-1] = 1
+
+            winsound.PlaySound(parameters["noteStart"],
+                               winsound.SND_FILENAME)
+
+        parameters["triggers"]["listeningStart"]()
+       # core.wait(0.004)
+
+        time_start = time.time()
+
+        bpm = play_random_sound_looped(bpm_selected, sound_path, duration)
+
+        # if is_oxi:
+        #     # Record for a desired time length
+        #     parameters["oxiTask"].read(duration=duration - 1)
+        # if is_EEG:
+        #     core.wait(duration - 1)
+
+
+
+        actual_duration = time.time() - time_start
+        # Sound signaling trial stop
+        if (condition == "Count") | (condition == "Training"):
+            # Add event marker
+            if is_oxi:
+                parameters["oxiTask"].readInWaiting()
+                parameters["oxiTask"].channels["Channel_0"][-1] = 2
+            winsound.PlaySound(parameters["noteStop"],
+                               winsound.SND_FILENAME)
+
+            if is_oxi:
+                parameters["oxiTask"].readInWaiting()
+
+        parameters["triggers"]["listeningStop"]()
+        core.wait(0.5)
+        # Hide instructions
+        parameters["win"].flip()
+
+        # Save recording
+        if is_oxi:
+            parameters["oxiTask"].save(
+                parameters["resultPath"]
+                + "/"
+                + parameters["participant"]
+                + str(nTrial)
+                + "_"
+                + str(nTrial)
+            )
+        ###############################
+        # Record participant estimation
+        ###############################
+        if (condition == "Count") | (condition == "Training"):
+            # Ask the participant to press '0' (default) to start the trial
+            messageCount = visual.TextStim(
+                parameters["win"],
+                height=parameters["textSize"],
+                pos=(0, 0.2),
+                text=parameters["texts"]["nCount"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=10
+            )
+            messageCount.draw()
+            parameters["win"].flip()
+
+            parameters["triggers"]["decisionStart"]()  # Send trigger or None
+
+            nCounts = ""
+            while True:
+
+                # Record new key
+                key = event.waitKeys(
+                    keyList=[
+                        "escape",
+                        "backspace",
+                        "return",
+                        "num_1",
+                        "num_2",
+                        "num_3",
+                        "num_4",
+                        "num_5",
+                        "num_6",
+                        "num_7",
+                        "num_8",
+                        "num_9",
+                        "num_0",
+                    ]
+                )
+
+                if key[0] == "escape":
+                    print("User abort")
+                    return -1, -1.0, -1.0, -1.0, True
+                if key[0] == "backspace":
+                    if nCounts:
+                        nCounts = nCounts[:-1]
+                elif key[0] == "return":
+                    if not all(char.isdigit() for char in nCounts):
+                        messageError = visual.TextStim(
+                            parameters["win"],
+                            height=parameters["textSize"],
+                            pos=(0, 0.2),
+                            text=parameters["texts"]["not_number_input"],
+                            languageStyle=parameters['languageStyle'],
+                            wrapWidth=15
+                        )
+                        messageError.draw()
+                        parameters["win"].flip()
+                        core.wait(0.1)
+                    elif nCounts == "":
+                        messageError = visual.TextStim(
+                            parameters["win"],
+                            height=parameters["textSize"],
+                            pos=(0, 0.2),
+                            text=parameters["texts"]["not_number_input"],
+                            languageStyle=parameters['languageStyle'],
+                            wrapWidth=15
+                        )
+                        messageError.draw()
+                        parameters["win"].flip()
+                        core.wait(0.1)
+                    else:
+                        break
+
+                else:
+                    if key:
+                        nCounts += [s for s in key[0] if s.isdigit()][0]
+
+                # Show the text on the screen
+                recordedText = visual.TextStim(
+                    parameters["win"], height=parameters["textSize"], text=nCounts
+                )
+                recordedText.draw()
+                messageCount.draw()
+                parameters["win"].flip()
+
+            parameters["triggers"]["decisionStop"]()  # Send trigger or None
+
+            ##############
+            # Rating scale
+            ##############
+            if parameters["rating"] is True:
+                (
+                    confidence,
+                    confidenceRT,
+                    ratingProvided,
+                    ratingEndTrigger, userAborted
+                ) = confidenceRatingTask(parameters)
+
+        finalCount = int(nCounts) if nCounts else -1
+
+
+    return finalCount, -1 if confidence is None else confidence, -1 if confidenceRT is None else confidenceRT, actual_duration, False, -1 if bpm is None else bpm, modality
 
 
 def tutorial(parameters: dict):
@@ -507,6 +761,9 @@ def tutorial(parameters: dict):
         parameters["win"],
         height=parameters["textSize"],
         text=parameters["texts"]["Tutorial1"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+
     )
     messageStart.draw()
     press = visual.TextStim(
@@ -514,6 +771,8 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     press.draw()
     parameters["win"].flip()
@@ -525,6 +784,8 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         pos=(0.0, 0.2),
         text=parameters["texts"]["Tutorial2"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     messageStart.draw()
     parameters["heartLogo"].draw()
@@ -533,36 +794,44 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     press.draw()
     parameters["win"].flip()
     event.waitKeys(keyList=parameters["startKey"])
 
-    # Tutorial 3
-    if parameters["taskVersion"] == "Shandry":
-        messageStart = visual.TextStim(
-            parameters["win"],
-            height=parameters["textSize"],
-            pos=(0.0, 0.2),
-            text=parameters["texts"]["Tutorial3"],
-        )
-        messageStart.draw()
-        parameters["restLogo"].draw()
-        press = visual.TextStim(
-            parameters["win"],
-            height=parameters["textSize"],
-            text=parameters["texts"]["continue_text"],
-            pos=(0.0, -0.4),
-        )
-        press.draw()
-        parameters["win"].flip()
-        event.waitKeys(keyList=parameters["startKey"])
+    # # Tutorial 3
+    # if parameters["taskVersion"] == "Shandry":
+    #     messageStart = visual.TextStim(
+    #         parameters["win"],
+    #         height=parameters["textSize"],
+    #         pos=(0.0, 0.2),
+    #         text=parameters["texts"]["Tutorial3"],
+    #         languageStyle=parameters['languageStyle'],
+    #         wrapWidth=15
+    #     )
+    #     messageStart.draw()
+    #     parameters["restLogo"].draw()
+    #     press = visual.TextStim(
+    #         parameters["win"],
+    #         height=parameters["textSize"],
+    #         text=parameters["texts"]["continue_text"],
+    #         pos=(0.0, -0.4),
+    #         languageStyle=parameters['languageStyle'],
+    #         wrapWidth=15
+    #     )
+    #     press.draw()
+    #     parameters["win"].flip()
+    #     event.waitKeys(keyList=parameters["startKey"])
 
     # Tutorial 4
     messageStart = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
         text=parameters["texts"]["Tutorial4"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=10
     )
     messageStart.draw()
     press = visual.TextStim(
@@ -570,6 +839,8 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     press.draw()
     parameters["win"].flip()
@@ -581,6 +852,8 @@ def tutorial(parameters: dict):
         parameters["win"],
         height=parameters["textSize"],
         text=parameters["texts"]["Tutorial5"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=10
     )
     messageStart.draw()
     press = visual.TextStim(
@@ -588,6 +861,8 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     press.draw()
     parameters["win"].flip()
@@ -598,6 +873,8 @@ def tutorial(parameters: dict):
         parameters["win"],
         height=parameters["textSize"],
         text=parameters["texts"]["Tutorial6"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     messageStart.draw()
     press = visual.TextStim(
@@ -605,16 +882,21 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     press.draw()
     parameters["win"].flip()
     event.waitKeys(keyList=parameters["startKey"])
+
 
     # Tutorial 7
     messageStart = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
         text=parameters["texts"]["Tutorial7"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     messageStart.draw()
     press = visual.TextStim(
@@ -622,36 +904,23 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
-    )
-    press.draw()
-    parameters["win"].flip()
-    event.waitKeys(keyList=parameters["startKey"])
-
-    # Tutorial 8
-    messageStart = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["Tutorial8"],
-    )
-    messageStart.draw()
-    press = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["continue_text"],
-        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     press.draw()
     parameters["win"].flip()
     event.waitKeys(keyList=parameters["startKey"])
 
     # Practice trial
-    _ = trial("Count", 15, 0, parameters)
+    _ = trial("Training", 15, 0, parameters)
 
-    # Tutorial 9
+    # Tutorial 8
     messageStart = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
-        text=parameters["texts"]["Tutorial9"],
+        text=parameters["texts"]["Tutorial8"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     messageStart.draw()
     press = visual.TextStim(
@@ -659,11 +928,68 @@ def tutorial(parameters: dict):
         height=parameters["textSize"],
         text=parameters["texts"]["continue_text"],
         pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     press.draw()
     parameters["win"].flip()
     event.waitKeys(keyList=parameters["startKey"])
 
+
+    # Tutorial 9
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["Tutorial9"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    messageStart.draw()
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+
+    press.draw()
+    parameters["win"].flip()
+    event.waitKeys(keyList=parameters["startKey"])
+
+def tutorialExtero(parameters: dict):
+    """Run tutorial for the Heartbeat Counting Task.
+
+    Parameters
+    ----------
+    parameters : dict
+        Task parameters.
+    win : `psychopy.visual.window` or None
+        The window in which to draw objects.
+    """
+
+    # TutorialExtero1
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["TutorialExtero1"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+
+    )
+    messageStart.draw()
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    press.draw()
+    parameters["win"].flip()
+    event.waitKeys(keyList=parameters["startKey"])
 
 def rest(parameters: dict, duration: float = 300.0):
     """Run a resting state period for heart rate variability before running the Heart
@@ -704,3 +1030,64 @@ def rest(parameters: dict, duration: float = 300.0):
     parameters['triggers']['restStart']()
     core.wait(duration)
     parameters['triggers']['restEnd']()
+
+def play_random_sound_looped(bpm_selected, sound_path, duration: float):
+
+    """
+    Play wav. files randomly from a path
+
+    Args:
+        folder_path (str): str: wav. file path
+        duration (float): trial duration
+
+    Returns:
+        played_files (list of str):the bpm was played
+    """
+
+    start_time = time.time()
+    while True:
+        elapsed = time.time() - start_time
+        remaining = duration - elapsed
+        if remaining <= 0:
+            break
+
+        audio = AudioSegment.from_wav(sound_path)
+
+        sound_duration_sec = len(audio) / 1000
+
+        match = re.search(r"(\d+)bpm", bpm_selected.lower())
+        bpm = int(match.group(1)) if match else None
+
+        print(f"Played: {bpm_selected} | BPM: {bpm} | in duration of : {round(sound_duration_sec, 2)}  seconds")
+
+        play_obj = sa.play_buffer(
+            audio.raw_data,
+            num_channels=audio.channels,
+            bytes_per_sample=audio.sample_width,
+            sample_rate=audio.frame_rate,
+        )
+
+        if remaining >= sound_duration_sec:
+            time.sleep(sound_duration_sec)
+        else:
+            time.sleep(remaining)
+            play_obj.stop()
+            break
+
+        audio.stop()
+
+    print("\n Sound stoped.")
+
+    return bpm
+
+def ensure_numlock_on():
+    # הפונקציה מדליקה את NumLock אם הוא כבוי (רק ב-Windows)
+    VK_NUMLOCK = 0x90
+    SCANCODE = 0x45  # Scan code for NumLock key
+
+    # בדיקה אם NumLock כבוי
+    if ctypes.windll.user32.GetKeyState(VK_NUMLOCK) == 0:
+        # Key down
+        ctypes.windll.user32.keybd_event(VK_NUMLOCK, SCANCODE, 0x1, 0)
+        # Key up
+        ctypes.windll.user32.keybd_event(VK_NUMLOCK, SCANCODE, 0x3, 0)

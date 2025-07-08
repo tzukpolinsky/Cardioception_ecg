@@ -14,12 +14,11 @@ if __name__ == "__main__":
     subject_info = {
         'Subject Number': '',
         'Session': '001',
-        'exteroception': True,
         'date': data.getDateStr(),
         'language': ['hebrew', 'english'],
         "save folder": os.path.join(os.getcwd(), 'data'),
-        "full screen": True,
-        "assignment type": ['HRD', 'HBC'],
+        "full screen": False,
+        "assignment type": ['HRD', 'HBC', 'C-TCT'],
         "screen number": 0,
     }
 
@@ -41,6 +40,7 @@ if __name__ == "__main__":
             'number of trials': 100,
             'number of feedback trials': 3,
             'number of confidence trials': 2,
+            'exteroception': True,
             'recording device': 'zephyr',
             'device bluetooth address': ['A0:E6:F8:FA:98:7A', '58:93:D8:4A:6A:08', 'A4:DA:32:81:AF:A0'],
             'samples per second': 250,
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         parameters = HRD_getParameters(language=subject_info['language'],
                                        participant=participant_name, session=session, serialPort=None,
                                        fullscr=subject_info['full screen'],
-                                       exteroception=subject_info['exteroception'],
+                                       exteroception=HRD_subject_info['exteroception'],
                                        data_stream_device=HRD_subject_info['recording device'],
                                        samples_per_second=HRD_subject_info['samples per second'],
                                        setup='behavioral', nTrials=HRD_subject_info['number of trials'],
@@ -71,7 +71,8 @@ if __name__ == "__main__":
 
     elif assignment_type == 'HBC':
         HBC_subject_info = {
-            'task version': ['Garfinkel', 'Schandry', 'test'],
+            'task version': ['Zaccaro', 'Garfinkel', 'Schandry', 'test'],
+            'exteroception': False,
             'data_stream_device': ['EEG'],
             'EEG triggers port': '0x6EFC',
             'EEG trigger pulse (MS)': 4,
@@ -91,12 +92,44 @@ if __name__ == "__main__":
                                        taskVersion=HBC_subject_info['task version'],
                                        serialPort='', systole_kw={},
                                        fullscr=subject_info['full screen'],
-                                       exteroception=subject_info['exteroception'],
+                                       exteroception=HBC_subject_info['exteroception'],
                                        data_stream_device='EEG',
-                                       setup='behavioral',
+                                       setup='behavioral', maxRatingTime=10,
                                        screenNb=subject_info['screen number'], resultPath=results_path)
         # Run task
-        if HBC_task.run(parameters, runTutorial=False):
+        if HBC_task.run(parameters, runTutorial=True):
+            print('user aborted the task in the middle')
+
+
+    elif assignment_type == 'C-TCT':
+        HBC_subject_info = {
+            'task version': ['Zaccaro', 'Garfinkel', 'Schandry', 'test'],
+            'exteroception': True,
+            'data_stream_device': ['EEG'],
+            'EEG triggers port': '0x6EFC',
+            'EEG trigger pulse (MS)': 4,
+            'task setup': ['behavioral', 'test']
+        }
+
+        # Create a dialog box
+        dlg = gui.DlgFromDict(dictionary=HBC_subject_info, title='C-TCT Task parameters')
+
+        # If the user presses 'Cancel', exit the program
+        if not dlg.OK:
+            core.quit()
+        parameters = HBC_getParameters(language=subject_info['language'],
+                                       participant=participant_name, session=session,
+                                       EEG_trigger_pulse=HBC_subject_info['EEG trigger pulse (MS)'],
+                                       EEG_triggers_port=int(HBC_subject_info['EEG triggers port'], 16),
+                                       taskVersion=HBC_subject_info['task version'],
+                                       serialPort='', systole_kw={},
+                                       fullscr=subject_info['full screen'],
+                                       exteroception=HBC_subject_info['exteroception'],
+                                       data_stream_device='EEG',
+                                       setup='behavioral', maxRatingTime=10,
+                                       screenNb=subject_info['screen number'], resultPath=results_path)
+        # Run task
+        if HBC_task.run(parameters, runTutorial=True):
             print('user aborted the task in the middle')
 
 #    run_hrd_report(results_path,samples_per_seconds,results_path)
