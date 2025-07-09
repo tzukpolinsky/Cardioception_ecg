@@ -155,11 +155,11 @@ def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
             """
             """
         ),
-        "VASlabels": ["מנחש", "בטוח"],
+        "VASlabels": ["ניחוש", "בטוח"],
 
         "Training": (
             """
-          אחרי שתשמע/י 'Start', נסה/י לספור את פעימות הלב שלך. 
+          אחרי שתשמע/י "Start", נסה/י לספור את פעימות הלב שלך. 
           יש להסתמך על תחושות הגוף. 
           הפסיק/י לספור כאשר יושמע "Stop"
             """
@@ -167,9 +167,17 @@ def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
 
         "TrainingExtero": (
             """
-          אחרי שתשמע/י 'Start', נסה/י לספור את הדאונד המדמה פעימות של הלב. 
+          אחרי שתשמע/י "Start", נסה/י לספור את הדאונד המדמה פעימות של הלב. 
           הפסיק/י לספור כאשר יושמע "Stop"
             """
+        ),
+
+        "TrainingConfidence": (
+            """
+            עד כמה את/ה בטוח/ה בהחלטה שלך?
+             ללחוץ Enter להמשך.
+        
+        """
         ),
 
         "nCount": (
@@ -186,6 +194,7 @@ def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
             ללחוץ Enter להמשך.
             """
       ),
+
     }
 
 

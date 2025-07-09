@@ -14,6 +14,8 @@ import ctypes
 from pydub import AudioSegment
 import platform
 import pkg_resources  # type: ignore
+import json
+
 
 def run(
         parameters: dict,
@@ -33,12 +35,15 @@ def run(
     bool: did the subject ended the task
     """
 
+    task_start_time = core.getTime()
+
     # Make sure numLock is "on".
     if platform.system() == 'Windows':
         ensure_numlock_on()
 
 
     if parameters["exteroception"] == False:
+        task = "HBC"
         # Run tutorial
         if runTutorial is True:
             tutorial(parameters)
@@ -46,17 +51,29 @@ def run(
         if parameters["restPeriod"] is True:
             rest(parameters, duration=parameters["restLength"])
     else:
+        task = "C-TCT"
         # Run tutorial
         if runTutorial is True:
             tutorialExtero(parameters)
-            # load sound files
-            path = pkg_resources.resource_filename("cardioception.HBC", "Sounds/heart_sounds")
-            sound_files = [f for f in os.listdir(path) if f.lower().endswith(".wav")]
-            if not sound_files:
-                raise ValueError("wav. files was not found")
-            bpm_selected = random.choice(sound_files)
-            print(f"randomly choose {bpm_selected}")
-            sound_path = os.path.join(path, bpm_selected)
+            # Load and validate base files
+            sounds_path = pkg_resources.resource_filename("cardioception.HBC", "Sounds/heart_sounds")
+            base_sound_files = [f for f in os.listdir(sounds_path) if f.lower().endswith(".wav")]
+            if not base_sound_files:
+                raise ValueError("No .wav files found in heart_sounds folder")
+
+            if len(base_sound_files) != 4:
+                raise ValueError("Expected exactly 4 base .wav files for 4 trials per block")
+
+            # Repeat for each block
+            trials_per_block = 4
+            n_blocks = len(parameters["conditions"]) // trials_per_block
+
+            # Repeat and shuffle within each block
+            sound_files = []
+            for _ in range(n_blocks):
+                block = base_sound_files.copy()
+                np.random.shuffle(block)
+                sound_files.extend(block)
 
     user_aborted = False
 
@@ -72,7 +89,8 @@ def run(
         if parameters["exteroception"] == False:
             nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, modality = trial(condition, duration, nTrial, parameters)
         else:
-            nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, modality = trial(condition, duration, nTrial, parameters, bpm_selected, sound_path)
+            bpm_file = sound_files[nTrial]
+            nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, modality = trial(condition, duration, nTrial, parameters, bpm_file)
 
         if user_aborted:
             break
@@ -115,15 +133,16 @@ def run(
                 ignore_index=True,
             )
 
-        # Save the results at each iteration
-        parameters["results_df"].to_csv(
-            parameters["resultPath"]
-            + "/"
-            + parameters["participant"]
-            + parameters["session"]
-            + ".csv",
-            index=False,
-        )
+    task_end_time = core.getTime()
+    task_duration = (task_end_time-task_start_time)/60
+
+    time_data = {"task duration": task_duration}
+    sub_num = parameters["participant"]
+    filename = f"taskDuration_{task}_{sub_num}.json"
+    filepath = os.path.join(parameters["resultPath"], filename)
+
+    with open(filepath, "w") as f:
+        json.dump(time_data, f, indent=2)
 
      # Save results
     parameters["results_df"].to_csv(
@@ -131,10 +150,13 @@ def run(
         + "/"
         + parameters["participant"]
         + parameters["session"]
-        + parameters["exteroception"]
+        + task
         + "final.csv",
         index=False,
     )
+
+
+
 
     # End of the task
     if not user_aborted:
@@ -148,7 +170,7 @@ def run(
         )
         end.draw()
         parameters["win"].flip()
-    core.wait(0.1)
+    core.wait(2)
     parameters["win"].close()
     core.quit()
 
@@ -180,31 +202,56 @@ def confidenceRatingTask(
 
     print("...starting confidence rating.")
 
+
+
+
     # Initialise default values
     confidence, confidenceRT = None, None
     if check_if_user_aborted(parameters):
         return -1.0, -1.0, False, -1.0, True
     parameters["triggers"]["confidenceStart"]()
     parameters["win"].mouseVisible = False
-    message = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        pos=(0, 0.2),
-        text=parameters["texts"]["confidence"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=10
-    )
-    slider = visual.Slider(
-        win=parameters["win"],
-        name="slider",
-        pos=(0, -0.2),
-        size=(0.7, 0.1),
-        granularity=1,
-        ticks=(0, 100),
-        style="rating",
-        color="LightGray",
-        flip=False, startValue=random.randint(30, 70)
-    )
+
+    if (parameters['conditions'] == "Training"):
+        message = visual.TextStim(
+            parameters["win"],
+            height=parameters["textSize"],
+            pos=(0, 0.2),
+            text=parameters["texts"]["confidence_training"],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=10
+        )
+        slider = visual.Slider(
+            win=parameters["win"],
+            name="slider",
+            pos=(0, -0.2),
+            size=(0.7, 0.1),
+            granularity=1,
+            ticks=(0, 100),
+            style="rating",
+            color="LightGray",
+            flip=False, startValue=random.randint(30, 70)
+        )
+    else:
+        message = visual.TextStim(
+            parameters["win"],
+            height=parameters["textSize"],
+            pos=(0, 0.2),
+            text=parameters["texts"]["confidence"],
+            languageStyle=parameters['languageStyle'],
+            wrapWidth=10
+        )
+        slider = visual.Slider(
+            win=parameters["win"],
+            name="slider",
+            pos=(0, -0.2),
+            size=(0.7, 0.1),
+            granularity=1,
+            ticks=(0, 100),
+            style="rating",
+            color="LightGray",
+            flip=False, startValue=random.randint(30, 70)
+        )
 
     text_labels = [
         visual.TextStim(parameters["win"], text=label, pos=pos, languageStyle=parameters['languageStyle'],
@@ -212,7 +259,7 @@ def confidenceRatingTask(
         zip(parameters["texts"]["VASlabels"], [(-0.35, -0.3), (0.35, -0.3)])]
 
     slider.marker.size = (0.03, 0.03)
-    start_time = core.getTime()
+    confidence_start_time = core.getTime()
 
     # Initialize response parameters
     key_times = {'num_4': None, 'num_6': None}  # Track when keys are pressed
@@ -244,10 +291,10 @@ def confidenceRatingTask(
                     slider.markerPos = 100
 
                 # Check if response provided
-            if ('return' == latest_key.name) and (current_time - start_time > parameters["minRatingTime"]):
+            if ('return' == latest_key.name) and (current_time - confidence_start_time > parameters["minRatingTime"]):
                 confidence, confidenceRT, ratingProvided = (
                     slider.markerPos,
-                    current_time - start_time,
+                    current_time - confidence_start_time,
                     True,
                 )
                 print(
@@ -265,7 +312,7 @@ def confidenceRatingTask(
                 if check_if_user_aborted(parameters):
                     return -1.0, -1.0, False, -1.0, True
                 break
-        elif current_time - start_time > parameters["maxRatingTime"]:  # if too long
+        elif current_time - confidence_start_time > parameters["maxRatingTime"]:  # if too long
             ratingProvided = False
 
             # Text feedback if no rating provided
@@ -302,8 +349,8 @@ def trial(
         duration: int,
         nTrial: int,
         parameters: dict,
-        bpm_selected = "",
-        sound_path = "",
+        bpm_file = "",
+        sounds_path = "",
 ) -> Tuple[Optional[int], Optional[float], Optional[float], Optional[float], Optional[bool]]:
     """Run one trial.
 
@@ -408,15 +455,14 @@ def trial(
             winsound.PlaySound(parameters["noteStart"],
                                winsound.SND_FILENAME)
 
-        parameters["triggers"]["listeningStart"]()
-      #  core.wait(0.004)
         time_start = time.time()
+        parameters["triggers"]["listeningStart"]()
         if is_oxi:
             # Record for a desired time length
             parameters["oxiTask"].read(duration=duration - 1)
         if is_EEG:
             core.wait(duration - 1)
-        actual_duration = time.time() - time_start
+
         # Sound signaling trial stop
         if (condition == "Count") | (condition == "Training"):
             # Add event marker
@@ -430,6 +476,7 @@ def trial(
                 parameters["oxiTask"].readInWaiting()
 
         parameters["triggers"]["listeningStop"]()
+        actual_duration = time.time() - time_start
         core.wait(0.5)
         # Hide instructions
         parameters["win"].flip()
@@ -595,20 +642,14 @@ def trial(
             winsound.PlaySound(parameters["noteStart"],
                                winsound.SND_FILENAME)
 
-        parameters["triggers"]["listeningStart"]()
        # core.wait(0.004)
 
+
+
         time_start = time.time()
-
-        bpm = play_random_sound_looped(bpm_selected, sound_path, duration)
-
-        # if is_oxi:
-        #     # Record for a desired time length
-        #     parameters["oxiTask"].read(duration=duration - 1)
-        # if is_EEG:
-        #     core.wait(duration - 1)
-
-
+        parameters["triggers"]["listeningStart"]()
+        sound_path = os.path.join(pkg_resources.resource_filename("cardioception.HBC", "Sounds/heart_sounds"), bpm_file)
+        bpm = play_random_sound_looped(sound_path, duration)
 
         actual_duration = time.time() - time_start
         # Sound signaling trial stop
@@ -1031,34 +1072,36 @@ def rest(parameters: dict, duration: float = 300.0):
     core.wait(duration)
     parameters['triggers']['restEnd']()
 
-def play_random_sound_looped(bpm_selected, sound_path, duration: float):
+def play_random_sound_looped(sound_path: str, duration: float) -> int:
 
     """
-    Play wav. files randomly from a path
+    Play a .wav file in a loop for a set duration.
 
     Args:
-        folder_path (str): str: wav. file path
-        duration (float): trial duration
+        sound_path (str): Full path to a .wav file (e.g., "123bpm.wav")
+        duration (float): Trial duration in seconds
 
     Returns:
-        played_files (list of str):the bpm was played
+        int: BPM value extracted from the filename
     """
 
-    start_time = time.time()
+    filename = os.path.basename(sound_path)
+    # Extract BPM from filename (e.g., "80bpm.wav")
+    match = re.search(r"(\d+)bpm", filename.lower())
+    bpm = int(match.group(1)) if match else None
+
+
+    trial_start_time = time.time()
     while True:
-        elapsed = time.time() - start_time
+        elapsed = time.time() - trial_start_time
         remaining = duration - elapsed
         if remaining <= 0:
             break
 
         audio = AudioSegment.from_wav(sound_path)
-
         sound_duration_sec = len(audio) / 1000
 
-        match = re.search(r"(\d+)bpm", bpm_selected.lower())
-        bpm = int(match.group(1)) if match else None
-
-        print(f"Played: {bpm_selected} | BPM: {bpm} | in duration of : {round(sound_duration_sec, 2)}  seconds")
+        print(f"Played: {filename} | BPM: {bpm} | in duration of : {round(sound_duration_sec, 2)}  seconds")
 
         play_obj = sa.play_buffer(
             audio.raw_data,
@@ -1070,6 +1113,7 @@ def play_random_sound_looped(bpm_selected, sound_path, duration: float):
         if remaining >= sound_duration_sec:
             time.sleep(sound_duration_sec)
         else:
+
             time.sleep(remaining)
             play_obj.stop()
             break

@@ -166,7 +166,7 @@ def getParameters(
         parameters["conditions"] = []
 
         for _ in range(repeats):
-            block_times = np.array([2, 3, 4, 10]) # np.array([25, 35, 45, 100])
+            block_times = np.array([1, 1, 1, 1]) # np.array([25, 35, 45, 100])
             np.random.shuffle(block_times)
             parameters["times"].extend(block_times.tolist())
             parameters["conditions"].extend(["Count"] * len(block_times))
