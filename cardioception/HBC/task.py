@@ -217,7 +217,7 @@ def confidenceRatingTask(
             parameters["win"],
             height=parameters["textSize"],
             pos=(0, 0.2),
-            text=parameters["texts"]["confidence_training"],
+            text=parameters["texts"]["TrainingConfidence"],
             languageStyle=parameters['languageStyle'],
             wrapWidth=10
         )
@@ -650,8 +650,6 @@ def trial(
         parameters["triggers"]["listeningStart"]()
         sound_path = os.path.join(pkg_resources.resource_filename("cardioception.HBC", "Sounds/heart_sounds"), bpm_file)
         bpm = play_random_sound_looped(sound_path, duration)
-
-        actual_duration = time.time() - time_start
         # Sound signaling trial stop
         if (condition == "Count") | (condition == "Training"):
             # Add event marker
@@ -665,6 +663,7 @@ def trial(
                 parameters["oxiTask"].readInWaiting()
 
         parameters["triggers"]["listeningStop"]()
+        actual_duration = time.time() - time_start
         core.wait(0.5)
         # Hide instructions
         parameters["win"].flip()
@@ -1118,7 +1117,7 @@ def play_random_sound_looped(sound_path: str, duration: float) -> int:
             play_obj.stop()
             break
 
-        audio.stop()
+#        audio.stop()
 
     print("\n Sound stoped.")
 

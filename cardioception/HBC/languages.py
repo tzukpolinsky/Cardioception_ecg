@@ -172,7 +172,7 @@ def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
             """
         ),
 
-        "TrainingConfidence": (
+        "confidence": (
             """
             עד כמה את/ה בטוח/ה בהחלטה שלך?
              ללחוץ Enter להמשך.
@@ -187,7 +187,7 @@ def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
             """
 
         ),
-        "confidence": (
+        "TrainingConfidence": (
             """
             עד כמה את/ה בטוח/ה בהחלטה שלך? 
             ללחוץ 6 (ימינה) או 4 (שמאלה) כדי להזיז הסמן על הסקאלה.

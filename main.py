@@ -17,7 +17,7 @@ if __name__ == "__main__":
         'date': data.getDateStr(),
         'language': ['hebrew', 'english'],
         "save folder": os.path.join(os.getcwd(), 'data'),
-        "full screen": False,
+        "full screen": True,
         "assignment type": ['HRD', 'HBC', 'C-TCT'],
         "screen number": 0,
     }
