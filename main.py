@@ -7,6 +7,7 @@ from cardioception.HRD.parameters import getParameters as HRD_getParameters
 from cardioception.HBC.parameters import getParameters as HBC_getParameters
 from cardioception.HRD import task as HRD_task
 from cardioception.HBC import task as HBC_task
+import numpy as np
 
 # from cardioception.HRD.HRDReport import run_hrd_report
 
@@ -18,7 +19,7 @@ if __name__ == "__main__":
         'language': ['hebrew', 'english'],
         "save folder": os.path.join(os.getcwd(), 'data'),
         "full screen": True,
-        "assignment type": ['HRD', 'HBC', 'C-TCT'],
+        "assignment type": ['HRD', 'HBC', 'CTCT'],
         "screen number": 0,
     }
 
@@ -72,12 +73,13 @@ if __name__ == "__main__":
     elif assignment_type == 'HBC':
         HBC_subject_info = {
             'task version': ['Zaccaro', 'Garfinkel', 'Schandry', 'test'],
-            'exteroception': False,
+            'CTCT': True,
             'data_stream_device': ['EEG'],
             'EEG triggers port': '0x6EFC',
             'EEG trigger pulse (MS)': 4,
             'task setup': ['behavioral', 'test']
         }
+
 
         # Create a dialog box
         dlg = gui.DlgFromDict(dictionary=HBC_subject_info, title='HBC Task parameters')
@@ -85,6 +87,15 @@ if __name__ == "__main__":
         # If the user presses 'Cancel', exit the program
         if not dlg.OK:
             core.quit()
+
+        counterbalance = [True, False] if HBC_subject_info['CTCT'] else [False]
+        if HBC_subject_info['CTCT']:
+            import numpy as np
+            np.random.shuffle(counterbalance)
+            counterbalance.extend(counterbalance)# מצטבר - לתקן כשכל פעם יהיה משתנה חדש
+
+
+
         parameters = HBC_getParameters(language=subject_info['language'],
                                        participant=participant_name, session=session,
                                        EEG_trigger_pulse=HBC_subject_info['EEG trigger pulse (MS)'],
@@ -92,7 +103,8 @@ if __name__ == "__main__":
                                        taskVersion=HBC_subject_info['task version'],
                                        serialPort='', systole_kw={},
                                        fullscr=subject_info['full screen'],
-                                       exteroception=HBC_subject_info['exteroception'],
+                                       counterbalance = counterbalance,
+                                       exteroception=True,
                                        data_stream_device='EEG',
                                        setup='behavioral', maxRatingTime=10,
                                        screenNb=subject_info['screen number'], resultPath=results_path)
@@ -101,7 +113,7 @@ if __name__ == "__main__":
             print('user aborted the task in the middle')
 
 
-    elif assignment_type == 'C-TCT':
+    elif assignment_type == 'CTCT':
         HBC_subject_info = {
             'task version': ['Zaccaro', 'Garfinkel', 'Schandry', 'test'],
             'exteroception': True,
@@ -112,7 +124,7 @@ if __name__ == "__main__":
         }
 
         # Create a dialog box
-        dlg = gui.DlgFromDict(dictionary=HBC_subject_info, title='C-TCT Task parameters')
+        dlg = gui.DlgFromDict(dictionary=HBC_subject_info, title='CTCT Task parameters')
 
         # If the user presses 'Cancel', exit the program
         if not dlg.OK:

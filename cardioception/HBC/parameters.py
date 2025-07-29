@@ -35,11 +35,13 @@ def getParameters(
         resultPath: Optional[str] = None,
         systole_kw: dict = {},
         exteroception: bool = True,
+        CTCT: bool = True,
         with_EEG: bool = True,
         EEG_trigger_pulse: int = 4,
         EEG_triggers_port: int = 0,
         data_stream_device: str = 'EEG',
-        language='english', maxRatingTime=10
+        language='english', maxRatingTime=10,
+        counterbalance = [True, False]
 ) -> Dict:
     """Create Heartbeat Counting task parameters.
 
@@ -132,7 +134,9 @@ def getParameters(
     parameters["labelsRating"] = ["שחנמ", "חוטב"]
     parameters["taskVersion"] = taskVersion
     parameters["results_df"] = None
+    parameters['CTCT'] = CTCT
     parameters['exteroception'] = exteroception
+    parameters['counterbalance'] = counterbalance
     parameters['language'] = language
     parameters['setup'] = setup
     parameters['languageStyle'] = 'RTL' if language == 'hebrew' else 'LTR'
@@ -166,7 +170,7 @@ def getParameters(
         parameters["conditions"] = []
 
         for _ in range(repeats):
-            block_times = np.array([25, 35, 45, 100]) # np.array([25, 35, 45, 100])
+            block_times = np.array([1, 2, 3, 4]) # np.array([25, 35, 45, 100])
             np.random.shuffle(block_times)
             parameters["times"].extend(block_times.tolist())
             parameters["conditions"].extend(["Count"] * len(block_times))
@@ -211,22 +215,39 @@ def getParameters(
         image=pkg_resources.resource_filename(__name__, "Images/rest.png"),
         pos=(0.0, -0.2),
     )
-    parameters["restLogo"].size *= 0.15
-    parameters["heartLogo"] = visual.ImageStim(
+    parameters["restLogo"].size *= 0.05
+
+    parameters["heartLogoTrain"] = visual.ImageStim(
         win=parameters["win"],
         units="height",
         image=pkg_resources.resource_filename(__name__, "Images/heartbeat.png"),
         pos=(0.0, -0.2),
     )
-    parameters["heartLogo"].size *= 0.05
+    parameters["heartLogoTrain"].size *= 0.05
 
-    parameters["listen"] = visual.ImageStim(
+    parameters["heartLogoTrial"] = visual.ImageStim(
+        win=parameters["win"],
+        units="height",
+        image=pkg_resources.resource_filename(__name__, "Images/heartbeat.png"),
+        pos=(0.0, 0.0),
+    )
+    parameters["heartLogoTrial"].size *= 0.03
+
+    parameters["listenLogoTrial"] = visual.ImageStim(
+        win=parameters["win"],
+        units="height",
+        image=pkg_resources.resource_filename(__name__, "Images/listen.png"),
+        pos=(0.0, 0.0),
+    )
+    parameters["listenLogoTrial"].size *= 0.03
+
+    parameters["listenLogoTrain"] = visual.ImageStim(
         win=parameters["win"],
         units="height",
         image=pkg_resources.resource_filename(__name__, "Images/listen.png"),
         pos=(0.0, -0.2),
     )
-    parameters["listen"].size *= 0.05
+    parameters["listenLogoTrain"].size *= 0.05
 
     parameters['data_stream_device'] = data_stream_device
     if setup == "behavioral":
@@ -254,6 +275,9 @@ def getParameters(
                 "decisionStop": lambda: send(15, EEG_trigger_pulse),
                 "confidenceStart": lambda: send(16, EEG_trigger_pulse),
                 "confidenceStop": lambda: send(17, EEG_trigger_pulse),
+                "HBC_Start": lambda: send(30, EEG_trigger_pulse),
+                "CTCT_Start": lambda: send(40, EEG_trigger_pulse),
+
             }
     elif setup == "test":
         # Use pre-recorded pulse time series for testing
@@ -288,7 +312,7 @@ def getParameters(
     if language == 'english':
         parameters["texts"] = english(exteroception)
     elif language == 'hebrew':
-        parameters["texts"] = hebrew(exteroception)
+        parameters["texts"] = hebrew(CTCT)
     parameters["textSize"] = 0.04
 
     return parameters

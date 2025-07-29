@@ -124,7 +124,7 @@ def english(exteroception: bool) -> Dict[str, Collection[str]]:
     return texts
 
 
-def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
+def hebrew(CTCT: bool) -> Dict[str, Collection[str]]:
     """Create the text dictionary with instruction in Hebrew
 
     Parameters
@@ -133,7 +133,7 @@ def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
         Can be `"keyboard"` or `"mouse"`.
     setup : str
         The experimental setup. Can be `"behavioral"` or `"test"`.
-    exteroception : bool
+    ctct : bool
         If `True`, the task includes and exteroceptive control condition.
 
     Returns
@@ -239,10 +239,12 @@ def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
         כאשר מופיע ציור של לב, ונשמעת המילה "Start" 
         יש להתחיל לספור פעימות.  
         
-        כאשר נשמעת המילה "Stop" עליך להפסיק את הספירה.
+        כאשר נשמעת המילה "Stop" יש להפסיק את הספירה.
         
         בשלב זה, צריך להשתדל במיוחד לא לזוז,
         שכן ההקלטות בו הן קריטיות.
+        
+        בנוסף, יש למקד את המבט במרכז הציור, מבלי להניע את האישונים.
         """
 
     )
@@ -275,7 +277,9 @@ def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
         כמו כן, שומרים על נשימה טבעית.
         ונמנעים, למשל, מעצירה של הנשימה. 
        
-        כאשר סופרים את הפעימות, יש לשמור על עיניים פקוחות, ולמקד את המבט באיור של הלב.
+        כאשר סופרים את הפעימות, יש לשמור על עיניים פקוחות, 
+        ולמקד את המבט באיור של הלב.
+        
         כמו כן, להשתדל להמנע מכל תנועה. 
         """
     )
@@ -329,30 +333,93 @@ def hebrew(exteroception: bool) -> Dict[str, Collection[str]]:
         """
     )
 
-    if exteroception is True:
+    if CTCT is True:
+        texts["TutorialExtero1"] = (
+            """
+            במטלה זו, יושמע סאונד שמדמה פעימות לב בחלונות זמן משתנים.
+                       
+            """
+        )
 
-        texts[
-            "TutorialExtero1"
-        ] = """
-        סיימת את החלק הראשון של המטלה!
-        
-        כעט נתחיל חלק נוסף.
-        
-        בחלק הזה נספור סאונד שמדמה קול של דופק.
-        
-        בדומה לחלק הקודם, 
-         הדיווח יהיה לגבי כמות הפעימות המדומות שספרת
-      
-        לבסוף, נאמוד את רמת הבטחון / אי-ודאות שלך.
-        
-        אורכו של חלק זה, זהה לחלק הקודם (בערך 13 דקות).
-        
+        texts["TutorialExtero2"] = (
+            """        
+            כאשר מופיע ציור של אוזן, ונשמעת המילה "Start" 
+            יש להתחיל לספור את הפעימות המדומות ששומעים.  
+
+            כאשר נשמעת המילה "Stop" יש להפסיק את הספירה.
+
+            בשלב זה, צריך להשתדל במיוחד לא לזוז,
+            שכן ההקלטות בו הן קריטיות.
+            
+            בנוסף, יש למקד את המבט במרכז הציור, 
+            מבלי להניע את האישונים.
+            """
+
+        )
+
+        # texts[
+        #    "Tutorial3"
+        # ] = (
+        #    'Sometime, you will also encounter this "rest" icon.'
+        #    " In this case your task will just be to sit quietly until the next"
+        #    " session."
+        # )
+
+        texts["TutorialExtero4"] = (
+            """
+            לאחר מכן,  מדווחים על כמות הפעימות שספרת.
+
+            הדיווח נעשה באמצעות המספרים שממוקמים בצד ימין של המקלדת.
+            ניתן למחוק מספר שכתבת, באמצעות לחיצה על backspace הרגיל.
+            """
+        )
+
         """
-
-        texts[
-            "TutorialExtero2"
-        ] = """
-
+        Instructions "Tutorial6" to "Tutorial9" translated and adapted from Legrand's original code (see in the english above)
         """
+        texts["TutorialExtero6"] = (
+            """
+            בכל פעם אחרי שכותבים את המספר,
+            נאמוד את רמת הבטחון שלך לגבי אותה תשובה.
+
+             האומדן יעשה באמצעות סקאלה של בין 100 (ימין עד הסוף) ל- 0 (שמאל עד הסוף).
+
+             המשמעות של 100 היא שיש לך בטחון מוחלט שהתשובה שלך נכונה.
+             המשמעות של Enter היא שהתשובה שלך הייתה ניחוש.
+
+             כדי לבצע שינוי בסקאלה יש להשתמש בספרות 6 (ימינה) או 4 (שמאלה)
+             שבצד ימין של המקלדת. 
+
+            """
+        )
+
+        texts["TutorialExtero7"] = (
+            """
+            כעת נבצע אימון קצר.
+            """
+
+        )
+
+        texts["TutorialExtero8"] = (
+            """
+                    מצויין!
+
+            לשים לב שמהלך הניסוי עצמו
+            כאשר סופרים 
+            יופיע ציור של אוזן בלבד, ללא הטקסט המצורף.
+            """
+
+        )
+
+        texts["TutorialExtero9"] = (
+            """
+            סה"כ אורך המטלה כ- 13 דקות.
+
+            במידה ויש לך שאלות לגבי הניסוי,
+            אפשר לשאול את הנסיין עכשיו.
+
+            אחרת, להקיש Enter כדי להתחיל בניסוי.
+            """
+        )
 
     return texts

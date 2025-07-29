@@ -15,6 +15,7 @@ from pydub import AudioSegment
 import platform
 import pkg_resources  # type: ignore
 import json
+from cardioception.HBC.Sounds.heart_sounds.heartbeat_bpm import repeat_tone_for_duration
 
 
 def run(
@@ -41,125 +42,124 @@ def run(
     if platform.system() == 'Windows':
         ensure_numlock_on()
 
+    tasks = pd.DataFrame()
+    for bool in parameters['counterbalance']:
+        parameters["exteroception"] = bool
 
-    if parameters["exteroception"] == False:
-        task = "HBC"
-        # Run tutorial
-        if runTutorial is True:
-            tutorial(parameters)
-        # Rest
-        if parameters["restPeriod"] is True:
-            rest(parameters, duration=parameters["restLength"])
-    else:
-        task = "C-TCT"
-        # Run tutorial
-        if runTutorial is True:
-            tutorialExtero(parameters)
-            # Load and validate base files
-            sounds_path = pkg_resources.resource_filename("cardioception.HBC", "Sounds/heart_sounds")
-            base_sound_files = [f for f in os.listdir(sounds_path) if f.lower().endswith(".wav")]
-            if not base_sound_files:
-                raise ValueError("No .wav files found in heart_sounds folder")
+        if parameters["exteroception"] == False:
+            task = "HBC"
+            # Run tutorial
+            if runTutorial is True:
+                tutorial(parameters)
+            parameters['triggers']['HBC_Start']()
 
-            if len(base_sound_files) != 4:
-                raise ValueError("Expected exactly 4 base .wav files for 4 trials per block")
-
-            # Repeat for each block
+        else:
+            # shuffle bpm for each block
+            task = "CTCT"
             trials_per_block = 4
             n_blocks = len(parameters["conditions"]) // trials_per_block
 
-            # Repeat and shuffle within each block
-            sound_files = []
+            bpm_shuffled = []
             for _ in range(n_blocks):
-                block = base_sound_files.copy()
+                block = [50, 55, 65, 70]
                 np.random.shuffle(block)
-                sound_files.extend(block)
+                bpm_shuffled.extend(block)
+            if runTutorial is True:
+                tutorialExtero(parameters)
+            parameters['triggers']['CTCT_Start']()
 
-    user_aborted = False
+        # Rest
+        if parameters["restPeriod"] is True:
+            rest(parameters, duration=parameters["restLength"])
 
+        user_aborted = False
 
-    for condition, duration, nTrial in zip(
-            parameters["conditions"],
-            parameters["times"],
-            range(0, len(parameters["conditions"])),
-    ):
+        for condition, duration, nTrial in zip(
+                parameters["conditions"],
+                parameters["times"],
+                range(0, len(parameters["conditions"])),
+        ):
 
+            core.wait(1)
+            parameters['triggers']['trialStart']()
+            if parameters["exteroception"] == False:
+                nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, modality = trial(condition, duration, nTrial, parameters)
+            else:
+            # delete    bpm_file = sound_files[nTrial]
+                bpm = bpm_shuffled[nTrial]
+                nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, modality = trial(condition, duration, nTrial, parameters, bpm)
 
-        parameters['triggers']['trialStart']()
-        if parameters["exteroception"] == False:
-            nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, modality = trial(condition, duration, nTrial, parameters)
-        else:
-            bpm_file = sound_files[nTrial]
-            nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, modality = trial(condition, duration, nTrial, parameters, bpm_file)
+            if user_aborted:
+                break
+            core.wait(1)
+            parameters["triggers"]["trialStop"]()  # Send trigger or None
+           # Store results in a DataFrame
+            if parameters["results_df"] is None:
+                parameters["results_df"] = pd.DataFrame(
+                    {
+                        "modality": [modality],
+                        "nTrial": [nTrial],
+                        "Reported": [nCount],
+                        "Condition": [condition],
+                        "Duration": [duration],
+                        "Actual duration": [actual_duration],
+                        "Confidence": [confidence],
+                        "ConfidenceRT": [confidenceRT],
+                        "bpm": [bpm]
+                    }
+                )
+            else:
+                parameters["results_df"] = pd.concat(
+                    [
+                        parameters["results_df"],
+                        pd.DataFrame(
+                            {
+                                "modality": [modality],
+                                "nTrial": [nTrial],
+                                "Reported": [nCount],
+                                "Condition": [condition],
+                                "Duration": [duration],
+                                "Actual duration": [actual_duration],
+                                "Confidence": [confidence],
+                                "ConfidenceRT": [confidenceRT],
+                                "bpm": [bpm]
+                            }
+                        ),
+                    ],
+                    ignore_index=True,
+                )
 
-        if user_aborted:
-            break
+        task_end_time = core.getTime()
+        task_duration = (task_end_time-task_start_time)/60
 
-        parameters["triggers"]["trialStop"]()  # Send trigger or None
+        time_data = {"task duration": task_duration}
+        sub_num = parameters["participant"]
+        filename = f"taskDuration_{task}_{sub_num}.json"
+        filepath = os.path.join(parameters["resultPath"], filename)
 
-        # Store results in a DataFrame
-        if parameters["results_df"] is None:
-            parameters["results_df"] = pd.DataFrame(
-                {
-                    "modality": [modality],
-                    "nTrial": [nTrial],
-                    "Reported": [nCount],
-                    "Condition": [condition],
-                    "Duration": [duration],
-                    "Actual duration": [actual_duration],
-                    "Confidence": [confidence],
-                    "ConfidenceRT": [confidenceRT],
-                    "bpm": [bpm]
-                }
-            )
-        else:
-            parameters["results_df"] = pd.concat(
-                [
-                    parameters["results_df"],
-                    pd.DataFrame(
-                        {
-                            "modality": [modality],
-                            "nTrial": [nTrial],
-                            "Reported": [nCount],
-                            "Condition": [condition],
-                            "Duration": [duration],
-                            "Actual duration": [actual_duration],
-                            "Confidence": [confidence],
-                            "ConfidenceRT": [confidenceRT],
-                            "bpm":[bpm]
-                        }
-                    ),
-                ],
-                ignore_index=True,
-            )
+        with open(filepath, "w") as f:
+            json.dump(time_data, f, indent=2)
+        # # Save results
+        parameters["results_df"].to_csv(
+            parameters["resultPath"]
+            + "/"
+            + task
+            + "_final.csv",
+            index=False,
+        )
 
-    task_end_time = core.getTime()
-    task_duration = (task_end_time-task_start_time)/60
-
-    time_data = {"task duration": task_duration}
-    sub_num = parameters["participant"]
-    filename = f"taskDuration_{task}_{sub_num}.json"
-    filepath = os.path.join(parameters["resultPath"], filename)
-
-    with open(filepath, "w") as f:
-        json.dump(time_data, f, indent=2)
-
-     # Save results
-    parameters["results_df"].to_csv(
-        parameters["resultPath"]
-        + "/"
-        + parameters["participant"]
-        + parameters["session"]
-        + task
-        + "final.csv",
-        index=False,
-    )
-
-
+        tasks = pd.concat([tasks, parameters["results_df"]], ignore_index=True)
 
 
     # End of the task
     if not user_aborted:
+        tasks.to_csv(
+            parameters["resultPath"]
+            + "/"
+            + "HBC_CTCT"
+            + "_final.csv",
+            index=False,
+        )
         end = visual.TextStim(
             parameters["win"],
             height=parameters["textSize"],
@@ -349,8 +349,8 @@ def trial(
         duration: int,
         nTrial: int,
         parameters: dict,
-        bpm_file = "",
-        sounds_path = "",
+        bpm = "",
+        # delete sounds_path = "",
 ) -> Tuple[Optional[int], Optional[float], Optional[float], Optional[float], Optional[bool]]:
     """Run one trial.
 
@@ -400,8 +400,8 @@ def trial(
         parameters["oxiTask"].setup()
         parameters["oxiTask"].read(duration=2)
 
-    if parameters["exteroception"] == False:
-
+  #  if (not parameters["exteroception"]) or (condition == "Training"):
+    if  parameters["exteroception"] == False:
         modality = "Intero"
         # Show instructions
         if condition == "Rest":
@@ -415,6 +415,7 @@ def trial(
             )
             message.draw()
             parameters["restLogo"].draw()
+
         elif condition == "Count":
             message = visual.TextStim(
                 parameters["win"],
@@ -425,7 +426,7 @@ def trial(
                 wrapWidth=15
             )
             message.draw()
-            parameters["heartLogo"].draw()
+            parameters["heartLogoTrial"].draw()
 
         elif condition == "Training":
             message = visual.TextStim(
@@ -437,7 +438,7 @@ def trial(
                 wrapWidth=15
             )
             message.draw()
-            parameters["heartLogo"].draw()
+            parameters["heartLogoTrain"].draw()
         parameters["win"].flip()
 
         # Wait for a beat to start the task
@@ -469,15 +470,15 @@ def trial(
             if is_oxi:
                 parameters["oxiTask"].readInWaiting()
                 parameters["oxiTask"].channels["Channel_0"][-1] = 2
+
+            parameters["triggers"]["listeningStop"]()
+            actual_duration = time.time() - time_start
+            core.wait(0.5)
             winsound.PlaySound(parameters["noteStop"],
                                winsound.SND_FILENAME)
 
             if is_oxi:
                 parameters["oxiTask"].readInWaiting()
-
-        parameters["triggers"]["listeningStop"]()
-        actual_duration = time.time() - time_start
-        core.wait(0.5)
         # Hide instructions
         parameters["win"].flip()
 
@@ -578,7 +579,7 @@ def trial(
                 parameters["win"].flip()
 
             parameters["triggers"]["decisionStop"]()  # Send trigger or None
-
+            core.wait(1)
             ##############
             # Rating scale
             ##############
@@ -596,10 +597,6 @@ def trial(
     if parameters["exteroception"] == True:
 
         modality = "Extero"
-        # Show instructions
-        if tutorial == True:
-            tutorialExtero(parameters)
-
 
         if condition == "Count":
             message = visual.TextStim(
@@ -611,7 +608,7 @@ def trial(
                 wrapWidth=15
             )
             message.draw()
-            parameters["listen"].draw()
+            parameters["listenLogoTrial"].draw()
 
         elif condition == "TrainingExtero":
             message = visual.TextStim(
@@ -623,7 +620,7 @@ def trial(
                 wrapWidth=15
             )
             message.draw()
-            parameters["listen"].draw()
+            parameters["listenLogoTrial"].draw()
 
         parameters["win"].flip()
 
@@ -648,8 +645,9 @@ def trial(
 
         time_start = time.time()
         parameters["triggers"]["listeningStart"]()
-        sound_path = os.path.join(pkg_resources.resource_filename("cardioception.HBC", "Sounds/heart_sounds"), bpm_file)
-        bpm = play_random_sound_looped(sound_path, duration)
+        # delete sound_path = os.path.join(pkg_resources.resource_filename("cardioception.HBC", "Sounds/heart_sounds"), bpm_file)
+
+        repeat_tone_for_duration("cardioception/HBC/Sounds/heart_sounds/one_heartbeat.wav", total_duration_sec=duration, bpm=bpm)
         # Sound signaling trial stop
         if (condition == "Count") | (condition == "Training"):
             # Add event marker
@@ -765,7 +763,7 @@ def trial(
                 parameters["win"].flip()
 
             parameters["triggers"]["decisionStop"]()  # Send trigger or None
-
+            core.wait(1)
             ##############
             # Rating scale
             ##############
@@ -828,7 +826,8 @@ def tutorial(parameters: dict):
         wrapWidth=15
     )
     messageStart.draw()
-    parameters["heartLogo"].draw()
+    parameters["heartLogoTrain"].draw()
+
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
@@ -976,27 +975,27 @@ def tutorial(parameters: dict):
     event.waitKeys(keyList=parameters["startKey"])
 
 
-    # Tutorial 9
-    messageStart = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["Tutorial9"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
-    messageStart.draw()
-    press = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["continue_text"],
-        pos=(0.0, -0.4),
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
+    # delete Tutorial 9
+  #  messageStart = visual.TextStim(
+  #      parameters["win"],
+  #      height=parameters["textSize"],
+  #      text=parameters["texts"]["Tutorial9"],
+  #      languageStyle=parameters['languageStyle'],
+  #      wrapWidth=15
+  #  )
+  #  messageStart.draw()
+  #  press = visual.TextStim(
+  #      parameters["win"],
+  #      height=parameters["textSize"],
+  #      text=parameters["texts"]["continue_text"],
+  #      pos=(0.0, -0.4),
+  #     languageStyle=parameters['languageStyle'],
+  #     wrapWidth=15
+  #  )
 
-    press.draw()
-    parameters["win"].flip()
-    event.waitKeys(keyList=parameters["startKey"])
+  #  press.draw()
+  #  parameters["win"].flip()
+  #  event.waitKeys(keyList=parameters["startKey"])
 
 def tutorialExtero(parameters: dict):
     """Run tutorial for the Heartbeat Counting Task.
@@ -1009,7 +1008,7 @@ def tutorialExtero(parameters: dict):
         The window in which to draw objects.
     """
 
-    # TutorialExtero1
+    # Tutorial 1
     messageStart = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
@@ -1017,6 +1016,120 @@ def tutorialExtero(parameters: dict):
         languageStyle=parameters['languageStyle'],
         wrapWidth=15
 
+    )
+    messageStart.draw()
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    press.draw()
+    parameters["win"].flip()
+    event.waitKeys(keyList=parameters["startKey"])
+
+    # Tutorial 2
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        pos=(0.0, 0.2),
+        text=parameters["texts"]["TutorialExtero2"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    messageStart.draw()
+    parameters["listenLogoTrain"].draw()
+
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    press.draw()
+    parameters["win"].flip()
+    event.waitKeys(keyList=parameters["startKey"])
+
+
+    # Tutorial 4
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["TutorialExtero4"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=10
+    )
+    messageStart.draw()
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    press.draw()
+    parameters["win"].flip()
+
+    event.waitKeys(keyList=parameters["startKey"])
+
+    # Tutorial 6
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["TutorialExtero6"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    messageStart.draw()
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    press.draw()
+    parameters["win"].flip()
+    event.waitKeys(keyList=parameters["startKey"])
+
+
+    # Tutorial 7
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["TutorialExtero7"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    messageStart.draw()
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    press.draw()
+    parameters["win"].flip()
+    event.waitKeys(keyList=parameters["startKey"])
+
+    # Practice trial
+    _ = trial("TrainingExtero", 15, 0, parameters, bpm=60)
+
+    # Tutorial 8
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["TutorialExtero8"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
     )
     messageStart.draw()
     press = visual.TextStim(
@@ -1071,57 +1184,58 @@ def rest(parameters: dict, duration: float = 300.0):
     core.wait(duration)
     parameters['triggers']['restEnd']()
 
-def play_random_sound_looped(sound_path: str, duration: float) -> int:
-
-    """
-    Play a .wav file in a loop for a set duration.
-
-    Args:
-        sound_path (str): Full path to a .wav file (e.g., "123bpm.wav")
-        duration (float): Trial duration in seconds
-
-    Returns:
-        int: BPM value extracted from the filename
-    """
-
-    filename = os.path.basename(sound_path)
-    # Extract BPM from filename (e.g., "80bpm.wav")
-    match = re.search(r"(\d+)bpm", filename.lower())
-    bpm = int(match.group(1)) if match else None
-
-
-    trial_start_time = time.time()
-    while True:
-        elapsed = time.time() - trial_start_time
-        remaining = duration - elapsed
-        if remaining <= 0:
-            break
-
-        audio = AudioSegment.from_wav(sound_path)
-        sound_duration_sec = len(audio) / 1000
-
-        print(f"Played: {filename} | BPM: {bpm} | in duration of : {round(sound_duration_sec, 2)}  seconds")
-
-        play_obj = sa.play_buffer(
-            audio.raw_data,
-            num_channels=audio.channels,
-            bytes_per_sample=audio.sample_width,
-            sample_rate=audio.frame_rate,
-        )
-
-        if remaining >= sound_duration_sec:
-            time.sleep(sound_duration_sec)
-        else:
-
-            time.sleep(remaining)
-            play_obj.stop()
-            break
-
-#        audio.stop()
-
-    print("\n Sound stoped.")
-
-    return bpm
+# delete
+# def play_random_sound_looped(sound_path: str, duration: float) -> int:
+#
+#     """
+#     Play a .wav file in a loop for a set duration.
+#
+#     Args:
+#         sound_path (str): Full path to a .wav file (e.g., "123bpm.wav")
+#         duration (float): Trial duration in seconds
+#
+#     Returns:
+#         int: BPM value extracted from the filename
+#     """
+#
+#     filename = os.path.basename(sound_path)
+#     # Extract BPM from filename (e.g., "80bpm.wav")
+#     match = re.search(r"(\d+)bpm", filename.lower())
+#     bpm = int(match.group(1)) if match else None
+#
+#
+#     trial_start_time = time.time()
+#     while True:
+#         elapsed = time.time() - trial_start_time
+#         remaining = duration - elapsed
+#         if remaining <= 0:
+#             break
+#
+#         audio = AudioSegment.from_wav(sound_path)
+#         sound_duration_sec = len(audio) / 1000
+#
+#         print(f"Played: {filename} | BPM: {bpm} | in duration of : {round(duration, 2)}  seconds")
+#
+#         play_obj = sa.play_buffer(
+#             audio.raw_data,
+#             num_channels=audio.channels,
+#             bytes_per_sample=audio.sample_width,
+#             sample_rate=audio.frame_rate,
+#         )
+#
+#         if remaining >= sound_duration_sec:
+#             time.sleep(sound_duration_sec)
+#         else:
+#
+#             time.sleep(remaining)
+#             play_obj.stop()
+#             break
+#
+# #        audio.stop()
+#
+#     print("\n Sound stoped.")
+#
+#     return bpm
 
 def ensure_numlock_on():
     # הפונקציה מדליקה את NumLock אם הוא כבוי (רק ב-Windows)
