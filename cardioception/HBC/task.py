@@ -8,6 +8,7 @@ import pandas as pd
 from psychopy import visual, core, event
 from psychopy.hardware import keyboard
 import os
+import numpy as np
 import re
 import simpleaudio as sa
 import ctypes
@@ -36,26 +37,77 @@ def run(
     bool: did the subject ended the task
     """
 
-    task_start_time = core.getTime()
-
     # Make sure numLock is "on".
     if platform.system() == 'Windows':
         ensure_numlock_on()
 
-    tasks = pd.DataFrame()
-    for bool in parameters['counterbalance']:
-        parameters["exteroception"] = bool
+    # Run tutorial
+    if runTutorial is True:
+        tutorial(parameters)
 
+    # Randomize the tasks
+    if parameters['CTCT']:
+        parameters['counterbalance'] = np.random.permutation([True, False]).tolist()
+    else:
+        parameters['counterbalance'] = [False]
+
+    tasks = pd.DataFrame()
+
+    for idx, condition in enumerate(parameters['counterbalance']):
+        parameters["exteroception"] = condition
         if parameters["exteroception"] == False:
-            task = "HBC"
-            # Run tutorial
-            if runTutorial is True:
-                tutorial(parameters)
+            task_start_time = core.getTime()
             parameters['triggers']['HBC_Start']()
 
+            task = "HBC"
+
+            messageStart = visual.TextStim(
+                parameters["win"],
+                height=parameters["textSize"],
+                text=parameters["texts"]["HBC_Start"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            messageStart.draw()
+            press = visual.TextStim(
+                parameters["win"],
+                height=parameters["textSize"],
+                text=parameters["texts"]["continue_text"],
+                pos=(0.0, -0.4),
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            press.draw()
+            parameters["win"].flip()
+            event.waitKeys(keyList=parameters["startKey"])
+
         else:
-            # shuffle bpm for each block
+            task_start_time = core.getTime()
+            parameters['triggers']['CTCT_Start']()
+
             task = "CTCT"
+
+            messageStart = visual.TextStim(
+                parameters["win"],
+                height=parameters["textSize"],
+                text=parameters["texts"]["CTCT_Start"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            messageStart.draw()
+            press = visual.TextStim(
+                parameters["win"],
+                height=parameters["textSize"],
+                text=parameters["texts"]["continue_text"],
+                pos=(0.0, -0.4),
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            press.draw()
+            parameters["win"].flip()
+            event.waitKeys(keyList=parameters["startKey"])
+
+            # shuffle bpm for each block
             trials_per_block = 4
             n_blocks = len(parameters["conditions"]) // trials_per_block
 
@@ -64,9 +116,7 @@ def run(
                 block = [50, 55, 65, 70]
                 np.random.shuffle(block)
                 bpm_shuffled.extend(block)
-            if runTutorial is True:
-                tutorialExtero(parameters)
-            parameters['triggers']['CTCT_Start']()
+
 
         # Rest
         if parameters["restPeriod"] is True:
@@ -80,18 +130,18 @@ def run(
                 range(0, len(parameters["conditions"])),
         ):
 
-            core.wait(1)
+            core.wait(0.5)
             parameters['triggers']['trialStart']()
             if parameters["exteroception"] == False:
-                nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, modality = trial(condition, duration, nTrial, parameters)
+                nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, num_beats, modality = trial(condition, duration, nTrial, parameters)
             else:
             # delete    bpm_file = sound_files[nTrial]
                 bpm = bpm_shuffled[nTrial]
-                nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, modality = trial(condition, duration, nTrial, parameters, bpm)
+                nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, num_beats, modality = trial(condition, duration, nTrial, parameters, bpm)
 
             if user_aborted:
                 break
-            core.wait(1)
+            core.wait(0.5)
             parameters["triggers"]["trialStop"]()  # Send trigger or None
            # Store results in a DataFrame
             if parameters["results_df"] is None:
@@ -105,7 +155,8 @@ def run(
                         "Actual duration": [actual_duration],
                         "Confidence": [confidence],
                         "ConfidenceRT": [confidenceRT],
-                        "bpm": [bpm]
+                        "bpm": [bpm],
+                        "num_beats": [num_beats]
                     }
                 )
             else:
@@ -122,7 +173,8 @@ def run(
                                 "Actual duration": [actual_duration],
                                 "Confidence": [confidence],
                                 "ConfidenceRT": [confidenceRT],
-                                "bpm": [bpm]
+                                "bpm": [bpm],
+                                "num_beats": [num_beats]
                             }
                         ),
                     ],
@@ -132,10 +184,58 @@ def run(
         task_end_time = core.getTime()
         task_duration = (task_end_time-task_start_time)/60
 
+        if idx == 0:
+            message = visual.TextStim(
+                parameters["win"],
+                text=parameters["texts"]["taskEnd1"],
+                pos=(0.0, 0.2),
+                height=parameters["textSize"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            message.draw()
+
+            press = visual.TextStim(
+                parameters["win"],
+                height=parameters["textSize"],
+                text=parameters["texts"]["continue_text"],
+                pos=(0.0, -0.4),
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            press.draw()
+            parameters["win"].flip()
+            event.waitKeys(keyList=parameters["startKey"])
+
+        else:
+            message = visual.TextStim(
+                parameters["win"],
+                text=parameters["texts"]["taskEnd2"],
+                pos=(0.0, 0.2),
+                height=parameters["textSize"],
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            message.draw()
+
+            press = visual.TextStim(
+                parameters["win"],
+                height=parameters["textSize"],
+                text=parameters["texts"]["continue_text"],
+                pos=(0.0, -0.4),
+                languageStyle=parameters['languageStyle'],
+                wrapWidth=15
+            )
+            press.draw()
+            parameters["win"].flip()
+            event.waitKeys(keyList=parameters["startKey"])
+
+
         time_data = {"task duration": task_duration}
         sub_num = parameters["participant"]
         filename = f"taskDuration_{task}_{sub_num}.json"
         filepath = os.path.join(parameters["resultPath"], filename)
+
 
         with open(filepath, "w") as f:
             json.dump(time_data, f, indent=2)
@@ -341,6 +441,7 @@ def confidenceRatingTask(
     ratingEndTrigger = time.time()
     parameters["win"].flip()
     parameters["triggers"]["confidenceStop"]()
+    core.wait(0.5)
     return confidence, confidenceRT, ratingProvided, ratingEndTrigger, False
 
 
@@ -349,7 +450,8 @@ def trial(
         duration: int,
         nTrial: int,
         parameters: dict,
-        bpm = "",
+        bpm = None,
+        num_beats = None
         # delete sounds_path = "",
 ) -> Tuple[Optional[int], Optional[float], Optional[float], Optional[float], Optional[bool]]:
     """Run one trial.
@@ -445,7 +547,7 @@ def trial(
         if is_oxi:
             parameters["oxiTask"].waitBeat()
 
-        core.wait(0.05)
+
         # Sound signaling trial start
         if (condition == "Count") | (condition == "Training"):
             if is_oxi:
@@ -456,8 +558,10 @@ def trial(
             winsound.PlaySound(parameters["noteStart"],
                                winsound.SND_FILENAME)
 
-        time_start = time.time()
-        parameters["triggers"]["listeningStart"]()
+            time_start = time.time()
+            parameters["triggers"]["listeningStart"]()
+        # core.wait(0.05)
+
         if is_oxi:
             # Record for a desired time length
             parameters["oxiTask"].read(duration=duration - 1)
@@ -471,16 +575,15 @@ def trial(
                 parameters["oxiTask"].readInWaiting()
                 parameters["oxiTask"].channels["Channel_0"][-1] = 2
 
-            parameters["triggers"]["listeningStop"]()
             actual_duration = time.time() - time_start
-            core.wait(0.5)
-            winsound.PlaySound(parameters["noteStop"],
-                               winsound.SND_FILENAME)
+            parameters["triggers"]["listeningStop"]()
+            winsound.PlaySound(parameters["noteStop"], winsound.SND_FILENAME)
 
             if is_oxi:
                 parameters["oxiTask"].readInWaiting()
         # Hide instructions
         parameters["win"].flip()
+        core.wait(0.5)
 
         # Save recording
         if is_oxi:
@@ -579,7 +682,7 @@ def trial(
                 parameters["win"].flip()
 
             parameters["triggers"]["decisionStop"]()  # Send trigger or None
-            core.wait(1)
+            core.wait(0.5)
             ##############
             # Rating scale
             ##############
@@ -591,7 +694,7 @@ def trial(
                     ratingEndTrigger, userAborted
                 ) = confidenceRatingTask(parameters)
 
-        bpm=None
+
         finalCount = int(nCounts) if nCounts else -1
 
     if parameters["exteroception"] == True:
@@ -627,45 +730,36 @@ def trial(
         # Wait for a beat to start the task
         if is_oxi:
             parameters["oxiTask"].waitBeat()
-        core.wait(0.5)
+
 
         # Sound signaling trial start
-        if (condition == "Count") | (condition == "Training"):
+        if (condition == "Count") | (condition == "TrainingExtero"):
             if is_oxi:
                 parameters["oxiTask"].readInWaiting()
                 # Add event marker
                 parameters["oxiTask"].channels["Channel_0"][-1] = 1
 
-            winsound.PlaySound(parameters["noteStart"],
-                               winsound.SND_FILENAME)
+            winsound.PlaySound(parameters["noteStart"], winsound.SND_FILENAME)
+            time_start = time.time()
+            parameters["triggers"]["listeningStart"]()
 
-       # core.wait(0.004)
+        num_beats = repeat_tone_for_duration("cardioception/HBC/Sounds/heart_sounds/one_heartbeat.wav", total_duration_sec=duration, bpm=bpm)
 
-
-
-        time_start = time.time()
-        parameters["triggers"]["listeningStart"]()
-        # delete sound_path = os.path.join(pkg_resources.resource_filename("cardioception.HBC", "Sounds/heart_sounds"), bpm_file)
-
-        repeat_tone_for_duration("cardioception/HBC/Sounds/heart_sounds/one_heartbeat.wav", total_duration_sec=duration, bpm=bpm)
         # Sound signaling trial stop
-        if (condition == "Count") | (condition == "Training"):
+        if (condition == "Count") | (condition == "TrainingExtero"):
             # Add event marker
             if is_oxi:
                 parameters["oxiTask"].readInWaiting()
                 parameters["oxiTask"].channels["Channel_0"][-1] = 2
-            winsound.PlaySound(parameters["noteStop"],
-                               winsound.SND_FILENAME)
 
+            actual_duration = time.time() - time_start
+            parameters["triggers"]["listeningStop"]()
+            winsound.PlaySound(parameters["noteStop"], winsound.SND_FILENAME)
             if is_oxi:
                 parameters["oxiTask"].readInWaiting()
-
-        parameters["triggers"]["listeningStop"]()
-        actual_duration = time.time() - time_start
-        core.wait(0.5)
         # Hide instructions
         parameters["win"].flip()
-
+        core.wait(0.5)
         # Save recording
         if is_oxi:
             parameters["oxiTask"].save(
@@ -680,7 +774,6 @@ def trial(
         # Record participant estimation
         ###############################
         if (condition == "Count") | (condition == "Training"):
-            # Ask the participant to press '0' (default) to start the trial
             messageCount = visual.TextStim(
                 parameters["win"],
                 height=parameters["textSize"],
@@ -763,7 +856,7 @@ def trial(
                 parameters["win"].flip()
 
             parameters["triggers"]["decisionStop"]()  # Send trigger or None
-            core.wait(1)
+            core.wait(0.5)
             ##############
             # Rating scale
             ##############
@@ -778,7 +871,7 @@ def trial(
         finalCount = int(nCounts) if nCounts else -1
 
 
-    return finalCount, -1 if confidence is None else confidence, -1 if confidenceRT is None else confidenceRT, actual_duration, False, -1 if bpm is None else bpm, modality
+    return finalCount, -1 if confidence is None else confidence, -1 if confidenceRT is None else confidenceRT, actual_duration, False, -1 if bpm is None else bpm, -1 if num_beats is None else num_beats, modality
 
 
 def tutorial(parameters: dict):
@@ -840,39 +933,18 @@ def tutorial(parameters: dict):
     parameters["win"].flip()
     event.waitKeys(keyList=parameters["startKey"])
 
-    # # Tutorial 3
-    # if parameters["taskVersion"] == "Shandry":
-    #     messageStart = visual.TextStim(
-    #         parameters["win"],
-    #         height=parameters["textSize"],
-    #         pos=(0.0, 0.2),
-    #         text=parameters["texts"]["Tutorial3"],
-    #         languageStyle=parameters['languageStyle'],
-    #         wrapWidth=15
-    #     )
-    #     messageStart.draw()
-    #     parameters["restLogo"].draw()
-    #     press = visual.TextStim(
-    #         parameters["win"],
-    #         height=parameters["textSize"],
-    #         text=parameters["texts"]["continue_text"],
-    #         pos=(0.0, -0.4),
-    #         languageStyle=parameters['languageStyle'],
-    #         wrapWidth=15
-    #     )
-    #     press.draw()
-    #     parameters["win"].flip()
-    #     event.waitKeys(keyList=parameters["startKey"])
+    # Tutorial 3
 
-    # Tutorial 4
     messageStart = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
-        text=parameters["texts"]["Tutorial4"],
+        pos=(0.0, 0.2),
+        text=parameters["texts"]["Tutorial3"],
         languageStyle=parameters['languageStyle'],
-        wrapWidth=10
+        wrapWidth=15
     )
     messageStart.draw()
+
     press = visual.TextStim(
         parameters["win"],
         height=parameters["textSize"],
@@ -883,7 +955,30 @@ def tutorial(parameters: dict):
     )
     press.draw()
     parameters["win"].flip()
+    event.waitKeys(keyList=parameters["startKey"])
 
+    # Tutorial 4
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        pos=(0.0, 0.2),
+        text=parameters["texts"]["Tutorial4"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    messageStart.draw()
+    parameters["listenLogoTrain"].draw()
+
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    press.draw()
+    parameters["win"].flip()
     event.waitKeys(keyList=parameters["startKey"])
 
     # Tutorial 5
@@ -950,8 +1045,6 @@ def tutorial(parameters: dict):
     parameters["win"].flip()
     event.waitKeys(keyList=parameters["startKey"])
 
-    # Practice trial
-    _ = trial("Training", 15, 0, parameters)
 
     # Tutorial 8
     messageStart = visual.TextStim(
@@ -974,28 +1067,56 @@ def tutorial(parameters: dict):
     parameters["win"].flip()
     event.waitKeys(keyList=parameters["startKey"])
 
+    # Practice trial
+    parameters["exteroception"] = False
+    _ = trial("Training", 15, 0, parameters)
 
-    # delete Tutorial 9
-  #  messageStart = visual.TextStim(
-  #      parameters["win"],
-  #      height=parameters["textSize"],
-  #      text=parameters["texts"]["Tutorial9"],
-  #      languageStyle=parameters['languageStyle'],
-  #      wrapWidth=15
-  #  )
-  #  messageStart.draw()
-  #  press = visual.TextStim(
-  #      parameters["win"],
-  #      height=parameters["textSize"],
-  #      text=parameters["texts"]["continue_text"],
-  #      pos=(0.0, -0.4),
-  #     languageStyle=parameters['languageStyle'],
-  #     wrapWidth=15
-  #  )
+    parameters["exteroception"] = True
+    _ = trial("TrainingExtero", 15, 0, parameters, bpm = 60)
 
-  #  press.draw()
-  #  parameters["win"].flip()
-  #  event.waitKeys(keyList=parameters["startKey"])
+
+    # Tutorial 9
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["Tutorial9"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    messageStart.draw()
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    press.draw()
+    parameters["win"].flip()
+    event.waitKeys(keyList=parameters["startKey"])
+
+
+   # Tutorial 10
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["Tutorial10"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    messageStart.draw()
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    press.draw()
+    parameters["win"].flip()
+    event.waitKeys(keyList=parameters["startKey"])
 
 def tutorialExtero(parameters: dict):
     """Run tutorial for the Heartbeat Counting Task.
