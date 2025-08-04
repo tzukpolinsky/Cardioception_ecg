@@ -17,7 +17,7 @@ import platform
 import pkg_resources  # type: ignore
 import json
 from cardioception.HBC.Sounds.heart_sounds.heartbeat_bpm import repeat_tone_for_duration
-
+import cardioception.HBC.Randomization_CTCT as rnd
 
 def run(
         parameters: dict,
@@ -43,7 +43,10 @@ def run(
 
     # Run tutorial
     if runTutorial is True:
+        parameters['triggers']['tutorialStart']()
         tutorial(parameters)
+        parameters['triggers']['tutorialEnd']()
+        core.wait(0.5)
 
     # Randomize the tasks
     if parameters['CTCT']:
@@ -107,14 +110,13 @@ def run(
             parameters["win"].flip()
             event.waitKeys(keyList=parameters["startKey"])
 
-            from cardioception.HBC.Randomization_CTCT import get_trial_sequence
+            bpms = [50, 60, 70]
+            part_raw = str(parameters.get("participant", ""))
+            seed_val = int(part_raw) if part_raw.isdigit() else None
 
-            if "bpms_seq" not in parameters:
-                part_raw = str(parameters.get("participant", ""))
-                seed_val = int(part_raw) if part_raw.isdigit() else None
-                durations, bpms = get_trial_sequence(seed=seed_val)
-                parameters["bpms_seq"] = np.array(bpms)
-                parameters["times"] = np.array(durations)
+            durations, bpms = rnd.get_trial_sequence(parameters["times"],bpms, seed=seed_val)
+            parameters["bpms_seq"] = np.array(bpms)
+            parameters["times"] = np.array(durations)
 
         if "bpms_seq" not in parameters:
             parameters["bpms_seq"] = np.array([None] * len(parameters["times"]))
@@ -237,16 +239,21 @@ def run(
             parameters["win"].flip()
             event.waitKeys(keyList=parameters["startKey"])
 
-
+        if parameters["exteroception"] == False:
+            parameters['triggers'][('HBC_End')]()
+        else:
+            parameters['triggers'][('CTCT_End')]()
         time_data = {"task duration": task_duration}
         sub_num = parameters["participant"]
         filename = f"taskDuration_{task}_{sub_num}.json"
         filepath = os.path.join(parameters["resultPath"], filename)
 
+        core.wait(0.5)
 
         with open(filepath, "w") as f:
             json.dump(time_data, f, indent=2)
-        # # Save results
+
+        # Save results
         parameters["results_df"].to_csv(
             parameters["resultPath"]
             + "/"
@@ -256,7 +263,7 @@ def run(
         )
 
         tasks = pd.concat([tasks, parameters["results_df"]], ignore_index=True)
-
+        parameters["results_df"] = None
 
     # End of the task
     if not user_aborted:
@@ -750,7 +757,7 @@ def trial(
             time_start = time.time()
             parameters["triggers"]["listeningStart"]()
 
-        num_beats = repeat_tone_for_duration("cardioception/HBC/Sounds/heart_sounds/one_heartbeat.wav", total_duration_sec=duration, bpm=bpm)
+            num_beats = repeat_tone_for_duration("cardioception/HBC/Sounds/heart_sounds/one_heartbeat.wav", total_duration_sec=duration, bpm=bpm)
 
         # Sound signaling trial stop
         if (condition == "Count") | (condition == "TrainingExtero"):
@@ -780,7 +787,7 @@ def trial(
         ###############################
         # Record participant estimation
         ###############################
-        if (condition == "Count") | (condition == "Training"):
+        if (condition == "Count") | (condition == "TrainingExtero"):
             messageCount = visual.TextStim(
                 parameters["win"],
                 height=parameters["textSize"],
@@ -1075,8 +1082,48 @@ def tutorial(parameters: dict):
     event.waitKeys(keyList=parameters["startKey"])
 
     # Practice trial
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["HBC_Start"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    messageStart.draw()
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    press.draw()
+    parameters["win"].flip()
+    event.waitKeys(keyList=parameters["startKey"])
+
     parameters["exteroception"] = False
     _ = trial("Training", 15, 0, parameters)
+
+    messageStart = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["CTCT_Start"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    messageStart.draw()
+    press = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        text=parameters["texts"]["continue_text"],
+        pos=(0.0, -0.4),
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=15
+    )
+    press.draw()
+    parameters["win"].flip()
+    event.waitKeys(keyList=parameters["startKey"])
 
     parameters["exteroception"] = True
     _ = trial("TrainingExtero", 15, 0, parameters, bpm = 60)
@@ -1125,152 +1172,152 @@ def tutorial(parameters: dict):
     parameters["win"].flip()
     event.waitKeys(keyList=parameters["startKey"])
 
-def tutorialExtero(parameters: dict):
-    """Run tutorial for the Heartbeat Counting Task.
-
-    Parameters
-    ----------
-    parameters : dict
-        Task parameters.
-    win : `psychopy.visual.window` or None
-        The window in which to draw objects.
-    """
-
-    # Tutorial 1
-    messageStart = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["TutorialExtero1"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-
-    )
-    messageStart.draw()
-    press = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["continue_text"],
-        pos=(0.0, -0.4),
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
-    press.draw()
-    parameters["win"].flip()
-    event.waitKeys(keyList=parameters["startKey"])
-
-    # Tutorial 2
-    messageStart = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        pos=(0.0, 0.2),
-        text=parameters["texts"]["TutorialExtero2"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
-    messageStart.draw()
-    parameters["listenLogoTrain"].draw()
-
-    press = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["continue_text"],
-        pos=(0.0, -0.4),
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
-    press.draw()
-    parameters["win"].flip()
-    event.waitKeys(keyList=parameters["startKey"])
-
-
-    # Tutorial 4
-    messageStart = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["TutorialExtero4"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=10
-    )
-    messageStart.draw()
-    press = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["continue_text"],
-        pos=(0.0, -0.4),
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
-    press.draw()
-    parameters["win"].flip()
-
-    event.waitKeys(keyList=parameters["startKey"])
-
-    # Tutorial 6
-    messageStart = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["TutorialExtero6"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
-    messageStart.draw()
-    press = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["continue_text"],
-        pos=(0.0, -0.4),
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
-    press.draw()
-    parameters["win"].flip()
-    event.waitKeys(keyList=parameters["startKey"])
-
-
-    # Tutorial 7
-    messageStart = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["TutorialExtero7"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
-    messageStart.draw()
-    press = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["continue_text"],
-        pos=(0.0, -0.4),
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
-    press.draw()
-    parameters["win"].flip()
-    event.waitKeys(keyList=parameters["startKey"])
-
-    # Practice trial
-    _ = trial("TrainingExtero", 15, 0, parameters, bpm=60)
-
-    # Tutorial 8
-    messageStart = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["TutorialExtero8"],
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
-    messageStart.draw()
-    press = visual.TextStim(
-        parameters["win"],
-        height=parameters["textSize"],
-        text=parameters["texts"]["continue_text"],
-        pos=(0.0, -0.4),
-        languageStyle=parameters['languageStyle'],
-        wrapWidth=15
-    )
-    press.draw()
-    parameters["win"].flip()
-    event.waitKeys(keyList=parameters["startKey"])
+# def tutorialExtero(parameters: dict):
+#     """Run tutorial for the Heartbeat Counting Task.
+#
+#     Parameters
+#     ----------
+#     parameters : dict
+#         Task parameters.
+#     win : `psychopy.visual.window` or None
+#         The window in which to draw objects.
+#     """
+#
+#     # Tutorial 1
+#     messageStart = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         text=parameters["texts"]["TutorialExtero1"],
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=15
+#
+#     )
+#     messageStart.draw()
+#     press = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         text=parameters["texts"]["continue_text"],
+#         pos=(0.0, -0.4),
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=15
+#     )
+#     press.draw()
+#     parameters["win"].flip()
+#     event.waitKeys(keyList=parameters["startKey"])
+#
+#     # Tutorial 2
+#     messageStart = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         pos=(0.0, 0.2),
+#         text=parameters["texts"]["TutorialExtero2"],
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=15
+#     )
+#     messageStart.draw()
+#     parameters["listenLogoTrain"].draw()
+#
+#     press = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         text=parameters["texts"]["continue_text"],
+#         pos=(0.0, -0.4),
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=15
+#     )
+#     press.draw()
+#     parameters["win"].flip()
+#     event.waitKeys(keyList=parameters["startKey"])
+#
+#
+#     # Tutorial 4
+#     messageStart = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         text=parameters["texts"]["TutorialExtero4"],
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=10
+#     )
+#     messageStart.draw()
+#     press = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         text=parameters["texts"]["continue_text"],
+#         pos=(0.0, -0.4),
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=15
+#     )
+#     press.draw()
+#     parameters["win"].flip()
+#
+#     event.waitKeys(keyList=parameters["startKey"])
+#
+#     # Tutorial 6
+#     messageStart = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         text=parameters["texts"]["TutorialExtero6"],
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=15
+#     )
+#     messageStart.draw()
+#     press = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         text=parameters["texts"]["continue_text"],
+#         pos=(0.0, -0.4),
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=15
+#     )
+#     press.draw()
+#     parameters["win"].flip()
+#     event.waitKeys(keyList=parameters["startKey"])
+#
+#
+#     # Tutorial 7
+#     messageStart = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         text=parameters["texts"]["TutorialExtero7"],
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=15
+#     )
+#     messageStart.draw()
+#     press = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         text=parameters["texts"]["continue_text"],
+#         pos=(0.0, -0.4),
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=15
+#     )
+#     press.draw()
+#     parameters["win"].flip()
+#     event.waitKeys(keyList=parameters["startKey"])
+#
+#     # Practice trial
+#     _ = trial("TrainingExtero", 15, 0, parameters, bpm=60)
+#
+#     # Tutorial 8
+#     messageStart = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         text=parameters["texts"]["TutorialExtero8"],
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=15
+#     )
+#     messageStart.draw()
+#     press = visual.TextStim(
+#         parameters["win"],
+#         height=parameters["textSize"],
+#         text=parameters["texts"]["continue_text"],
+#         pos=(0.0, -0.4),
+#         languageStyle=parameters['languageStyle'],
+#         wrapWidth=15
+#     )
+#     press.draw()
+#     parameters["win"].flip()
+#     event.waitKeys(keyList=parameters["startKey"])
 
 def rest(parameters: dict, duration: float = 300.0):
     """Run a resting state period for heart rate variability before running the Heart

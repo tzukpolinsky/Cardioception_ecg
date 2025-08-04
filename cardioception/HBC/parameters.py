@@ -11,7 +11,6 @@ from systole import serialSim
 from systole.recording import Oximeter
 from cardioception.HBC.languages import english, hebrew
 from psychopy import parallel, core, sound, visual
-from cardioception.HBC.Randomization_CTCT import get_trial_sequence
 _port = None
 
 
@@ -175,8 +174,6 @@ def getParameters(
             parameters["times"].extend(block_times.tolist())
             parameters["conditions"].extend(["Count"] * len(block_times))
 
-
-
     elif parameters["taskVersion"] == "Schandry":
         parameters["times"] = np.array([60, 25, 30, 35, 30, 45])
         parameters["conditions"] = ["Rest", "Count", "Rest", "Count", "Rest", "Count"]
@@ -266,6 +263,8 @@ def getParameters(
             parameters["EEG trigger pulse (MS)"] = EEG_trigger_pulse
             _port = parallel.ParallelPort(address=PORT_ADDR)
             parameters["triggers"] = {
+                "tutorialStart": lambda: send(50, EEG_trigger_pulse),
+                "tutorialEnd": lambda: send(51, EEG_trigger_pulse),
                 "restStart": lambda: send(20, EEG_trigger_pulse),
                 "restEnd": lambda: send(21, EEG_trigger_pulse),
                 "trialStart": lambda: send(10, EEG_trigger_pulse),
@@ -277,7 +276,9 @@ def getParameters(
                 "confidenceStart": lambda: send(16, EEG_trigger_pulse),
                 "confidenceStop": lambda: send(17, EEG_trigger_pulse),
                 "HBC_Start": lambda: send(30, EEG_trigger_pulse),
+                "HBC_End": lambda: send(31, EEG_trigger_pulse),
                 "CTCT_Start": lambda: send(40, EEG_trigger_pulse),
+                "CTCT_End": lambda: send(41, EEG_trigger_pulse),
 
             }
     elif setup == "test":

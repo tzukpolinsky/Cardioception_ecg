@@ -14,12 +14,12 @@ import numpy as np
 if __name__ == "__main__":
     subject_info = {
         'Subject Number': '',
-        'Session': '001',
+        'Session': '002',
         'date': data.getDateStr(),
         'language': ['hebrew', 'english'],
         "save folder": os.path.join(os.getcwd(), 'data'),
         "full screen": True,
-        "assignment type": ['HRD', 'HBC & CTCT'],
+        "assignment type": ['HBC & CTCT', 'HRD',],
         "screen number": 0,
     }
 
@@ -100,7 +100,7 @@ if __name__ == "__main__":
                                        setup='behavioral', maxRatingTime=10,
                                        screenNb=subject_info['screen number'], resultPath= results_path)
         # Run task
-        if HBC_task.run(parameters, runTutorial=False):
+        if HBC_task.run(parameters, runTutorial=True):
             print('user aborted the task in the middle')
 
 
