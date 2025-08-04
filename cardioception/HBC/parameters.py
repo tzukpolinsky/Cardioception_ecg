@@ -11,7 +11,7 @@ from systole import serialSim
 from systole.recording import Oximeter
 from cardioception.HBC.languages import english, hebrew
 from psychopy import parallel, core, sound, visual
-
+from cardioception.HBC.Randomization_CTCT import get_trial_sequence
 _port = None
 
 
@@ -174,6 +174,7 @@ def getParameters(
             np.random.shuffle(block_times)
             parameters["times"].extend(block_times.tolist())
             parameters["conditions"].extend(["Count"] * len(block_times))
+
 
 
     elif parameters["taskVersion"] == "Schandry":

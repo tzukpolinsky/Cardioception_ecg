@@ -100,7 +100,7 @@ if __name__ == "__main__":
                                        setup='behavioral', maxRatingTime=10,
                                        screenNb=subject_info['screen number'], resultPath= results_path)
         # Run task
-        if HBC_task.run(parameters, runTutorial=True):
+        if HBC_task.run(parameters, runTutorial=False):
             print('user aborted the task in the middle')
 
 

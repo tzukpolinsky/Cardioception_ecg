@@ -107,36 +107,43 @@ def run(
             parameters["win"].flip()
             event.waitKeys(keyList=parameters["startKey"])
 
-            # shuffle bpm for each block
-            trials_per_block = 4
-            n_blocks = len(parameters["conditions"]) // trials_per_block
+            from cardioception.HBC.Randomization_CTCT import get_trial_sequence
 
-            bpm_shuffled = []
-            for _ in range(n_blocks):
-                block = [50, 55, 65, 70]
-                np.random.shuffle(block)
-                bpm_shuffled.extend(block)
+            if "bpms_seq" not in parameters:
+                part_raw = str(parameters.get("participant", ""))
+                seed_val = int(part_raw) if part_raw.isdigit() else None
+                durations, bpms = get_trial_sequence(seed=seed_val)
+                parameters["bpms_seq"] = np.array(bpms)
+                parameters["times"] = np.array(durations)
 
+        if "bpms_seq" not in parameters:
+            parameters["bpms_seq"] = np.array([None] * len(parameters["times"]))
 
+        assert len(parameters["bpms_seq"]) == len(parameters["times"]), \
+            "bpms_seq length mismatch"
         # Rest
         if parameters["restPeriod"] is True:
             rest(parameters, duration=parameters["restLength"])
 
         user_aborted = False
 
-        for condition, duration, nTrial in zip(
-                parameters["conditions"],
-                parameters["times"],
-                range(0, len(parameters["conditions"])),
+        # for condition, duration, nTrial in zip(
+        #         parameters["conditions"],
+        #         parameters["times"],
+        #         range(0, len(parameters["conditions"])),
+        # ):
+        for nTrial, (condition, duration, bpm) in enumerate(
+                zip(parameters["conditions"],
+                    parameters["times"],
+                    parameters["bpms_seq"])
         ):
 
             core.wait(0.5)
             parameters['triggers']['trialStart']()
+
             if parameters["exteroception"] == False:
                 nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, num_beats, modality = trial(condition, duration, nTrial, parameters)
             else:
-            # delete    bpm_file = sound_files[nTrial]
-                bpm = bpm_shuffled[nTrial]
                 nCount, confidence, confidenceRT, actual_duration, user_aborted, bpm, num_beats, modality = trial(condition, duration, nTrial, parameters, bpm)
 
             if user_aborted:
@@ -452,7 +459,7 @@ def trial(
         parameters: dict,
         bpm = None,
         num_beats = None
-        # delete sounds_path = "",
+,
 ) -> Tuple[Optional[int], Optional[float], Optional[float], Optional[float], Optional[bool]]:
     """Run one trial.
 
