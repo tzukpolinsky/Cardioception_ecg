@@ -63,3 +63,10 @@ def get_trial_sequence(durations, bpms,  seed: int | None = None):
      durs, bpms = zip(*sum(blocks, []))
      print(list(zip(durs, bpms)))
      return list(durs), list(bpms)
+
+# for i in range(20):
+#     durations = [25, 35, 45, 100]
+#     bpms = [50, 60, 70]
+#     part_raw = str(i)
+#     seed_val = int(part_raw) if part_raw.isdigit() else None
+#     times, bpms = get_trial_sequence(durations, bpms, seed=seed_val)

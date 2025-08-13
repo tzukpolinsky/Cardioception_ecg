@@ -304,9 +304,8 @@ def check_if_user_aborted(parameters: dict):
 
 def confidenceRatingTask(
         parameters: dict,
-) -> Tuple[float, float, bool, float, bool]:
-    """Confidence rating scale, using keyboard or mouse inputs.
-
+) -> Tuple[Optional[float], Optional[float], bool, Optional[float], bool]:
+    """
     Parameters
     ----------
     parameters : dict
@@ -316,64 +315,40 @@ def confidenceRatingTask(
 
     print("...starting confidence rating.")
 
-
-
-
     # Initialise default values
     confidence, confidenceRT = None, None
     if check_if_user_aborted(parameters):
-        return -1.0, -1.0, False, -1.0, True
-    parameters["triggers"]["confidenceStart"]()
-    parameters["win"].mouseVisible = False
+        return (0, 0, 0, 0, True)
 
-    if (parameters['conditions'] == "Training"):
-        message = visual.TextStim(
-            parameters["win"],
-            height=parameters["textSize"],
-            pos=(0, 0.2),
-            text=parameters["texts"]["TrainingConfidence"],
-            languageStyle=parameters['languageStyle'],
-            wrapWidth=10
-        )
-        slider = visual.Slider(
-            win=parameters["win"],
-            name="slider",
-            pos=(0, -0.2),
-            size=(0.7, 0.1),
-            granularity=1,
-            ticks=(0, 100),
-            style="rating",
-            color="LightGray",
-            flip=False, startValue=random.randint(30, 70)
-        )
-    else:
-        message = visual.TextStim(
-            parameters["win"],
-            height=parameters["textSize"],
-            pos=(0, 0.2),
-            text=parameters["texts"]["confidence"],
-            languageStyle=parameters['languageStyle'],
-            wrapWidth=10
-        )
-        slider = visual.Slider(
-            win=parameters["win"],
-            name="slider",
-            pos=(0, -0.2),
-            size=(0.7, 0.1),
-            granularity=1,
-            ticks=(0, 100),
-            style="rating",
-            color="LightGray",
-            flip=False, startValue=random.randint(30, 70)
-        )
+
+    parameters["win"].mouseVisible = False
+    message = visual.TextStim(
+        parameters["win"],
+        height=parameters["textSize"],
+        pos=(0, 0.2),
+        text=parameters["texts"]["confidence"],
+        languageStyle=parameters['languageStyle'],
+        wrapWidth=50
+    )
+    slider = visual.Slider(
+        win=parameters["win"],
+        name="slider",
+        pos=(0, -0.2),
+        size=(0.7, 0.1),
+        granularity=1,
+        ticks=(0, 100),
+        style="rating",
+        color="LightGray",
+        flip=False, startValue=random.randint(30, 70)
+    )
 
     text_labels = [
         visual.TextStim(parameters["win"], text=label, pos=pos, languageStyle=parameters['languageStyle'],
-                        wrapWidth=15, height=parameters["textSize"]) for label, pos in
+                        wrapWidth=50, height=parameters["textSize"]) for label, pos in
         zip(parameters["texts"]["VASlabels"], [(-0.35, -0.3), (0.35, -0.3)])]
 
     slider.marker.size = (0.03, 0.03)
-    confidence_start_time = core.getTime()
+    start_time = core.getTime()
 
     # Initialize response parameters
     key_times = {'num_4': None, 'num_6': None}  # Track when keys are pressed
@@ -381,9 +356,9 @@ def confidenceRatingTask(
     key_board.clearEvents()
     while True:
         if check_if_user_aborted(parameters):
-            return -1.0, -1.0, False, -1.0, True
+            return (0, 0, 0, 0, True)
         current_time = core.getTime()
-        keys = key_board.getKeys(keyList=['num_6', 'num_4', 'return'], waitRelease=False, clear=False)
+        keys = key_board.getKeys(keyList=['num_4', 'num_6', 'return'], waitRelease=False, clear=False)
         # Check for keyboard input
         if keys is not None and len(keys) > 0:
             latest_key = keys[-1]
@@ -405,10 +380,10 @@ def confidenceRatingTask(
                     slider.markerPos = 100
 
                 # Check if response provided
-            if ('return' == latest_key.name) and (current_time - confidence_start_time > parameters["minRatingTime"]):
+            if ('return' == latest_key.name) and (current_time - start_time > parameters["minRatingTime"]):
                 confidence, confidenceRT, ratingProvided = (
                     slider.markerPos,
-                    current_time - confidence_start_time,
+                    current_time - start_time,
                     True,
                 )
                 print(
@@ -424,9 +399,9 @@ def confidenceRatingTask(
                 parameters["win"].flip()
                 core.wait(0.2)
                 if check_if_user_aborted(parameters):
-                    return -1.0, -1.0, False, -1.0, True
+                    return (0, 0, 0, 0, True)
                 break
-        elif current_time - confidence_start_time > parameters["maxRatingTime"]:  # if too long
+        elif current_time - start_time > parameters["maxRatingTime"]:  # if too long
             ratingProvided = False
 
             # Text feedback if no rating provided
@@ -443,7 +418,7 @@ def confidenceRatingTask(
             parameters["win"].flip()
             core.wait(0.5)
             if check_if_user_aborted(parameters):
-                return -1.0, -1.0, False, -1.0, True
+                return (0, 0, 0, 0, True)
             break
 
         for label in text_labels:
@@ -454,8 +429,8 @@ def confidenceRatingTask(
     key_board.clearEvents()
     ratingEndTrigger = time.time()
     parameters["win"].flip()
-    parameters["triggers"]["confidenceStop"]()
-    core.wait(0.5)
+
+
     return confidence, confidenceRT, ratingProvided, ratingEndTrigger, False
 
 
@@ -591,10 +566,12 @@ def trial(
 
             actual_duration = time.time() - time_start
             parameters["triggers"]["listeningStop"]()
+
             winsound.PlaySound(parameters["noteStop"], winsound.SND_FILENAME)
 
             if is_oxi:
                 parameters["oxiTask"].readInWaiting()
+
         # Hide instructions
         parameters["win"].flip()
         core.wait(0.5)
@@ -628,6 +605,7 @@ def trial(
             parameters["triggers"]["decisionStart"]()  # Send trigger or None
 
             nCounts = ""
+
             while True:
 
                 # Record new key
@@ -754,6 +732,7 @@ def trial(
                 parameters["oxiTask"].channels["Channel_0"][-1] = 1
 
             winsound.PlaySound(parameters["noteStart"], winsound.SND_FILENAME)
+
             time_start = time.time()
             parameters["triggers"]["listeningStart"]()
 
@@ -768,6 +747,7 @@ def trial(
 
             actual_duration = time.time() - time_start
             parameters["triggers"]["listeningStop"]()
+
             winsound.PlaySound(parameters["noteStop"], winsound.SND_FILENAME)
             if is_oxi:
                 parameters["oxiTask"].readInWaiting()
