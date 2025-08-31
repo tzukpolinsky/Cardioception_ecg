@@ -314,7 +314,8 @@ def confidenceRatingTask(
     """
 
     print("...starting confidence rating.")
-
+    core.wait(0.5)
+    parameters['triggers']['confidenceStart']()
     # Initialise default values
     confidence, confidenceRT = None, None
     if check_if_user_aborted(parameters):
@@ -430,7 +431,8 @@ def confidenceRatingTask(
     ratingEndTrigger = time.time()
     parameters["win"].flip()
 
-
+    parameters['triggers']['confidenceStop']()
+    core.wait(0.5)
     return confidence, confidenceRT, ratingProvided, ratingEndTrigger, False
 
 
@@ -678,6 +680,7 @@ def trial(
             ##############
             # Rating scale
             ##############
+
             if parameters["rating"] is True:
                 (
                     confidence,
@@ -1403,3 +1406,5 @@ def ensure_numlock_on():
         ctypes.windll.user32.keybd_event(VK_NUMLOCK, SCANCODE, 0x1, 0)
         # Key up
         ctypes.windll.user32.keybd_event(VK_NUMLOCK, SCANCODE, 0x3, 0)
+
+
