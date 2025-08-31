@@ -237,7 +237,7 @@ def getParameters(
         image=pkg_resources.resource_filename(__name__, "Images/listen.png"),
         pos=(0.0, 0.0),
     )
-    parameters["listenLogoTrial"].size *= 0.03
+    parameters["listenLogoTrial"].size *= 0.05
 
     parameters["listenLogoTrain"] = visual.ImageStim(
         win=parameters["win"],
